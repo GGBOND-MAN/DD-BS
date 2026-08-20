@@ -107,9 +107,38 @@ Mean focus gain (ideal 0.975):
 **~4.5 bits saved (~20x resolution relaxation)**, and a 3-bit PS still yields
 ~0.98 of the hybrid gain — the burden is **not** shifted onto the phase shifter.
 
+### CORRECTION — the first end-to-end probe was flawed
+
+The user's first `hw_probe_rate_e2e` run showed **no** hybrid advantage
+(B_td=12: naive 0.115, hybrid 0.166) despite the training-beam focusing gain
+being 0.096 vs 0.971. Cause: the probe applied the fix to **training only** and
+always served with a **pure-TD** `ttd_beam_impaired`, so the serving beam became
+the bottleneck and dominated the rate.
+
+Serving-beam focusing gain (its delay range is only ~2.1 ns):
+
+| LSB [ps] | 16.5 | 32.9 | 131.7 |
+|---|---|---|---|
+| pure-TD | 0.650 | **0.044** | 0.043 |
+| hybrid | 0.999 | **0.996** | 0.941 |
+
+So the required **precision (LSB) is set by the carrier period, not by the delay
+range** — even a 2.1 ns beam dies at a 32.9 ps LSB. The range only sets the
+**bit count**, `bits = log2(range/LSB)`, which is why the 140 ns training
+waveform needs ~6 more bits than the 2.1 ns serving beam at equal precision.
+
+Fixed: `ttd_beam_impaired` takes a `use_hybrid` flag, `training_ddbs_e2e` passes
+it through, and `hw_probe_rate_e2e` now runs **one architecture end-to-end per
+arm** (naive trains+serves pure-TD; hybrid trains+serves with the TD-PS split).
+Re-run `hw_probe_rate_e2e` for the corrected figure.
+
+Also confirmed by the user: the PS does **not** become the new bottleneck —
+at B_td=10, B_ps = Inf/6/5/4/3 gives 0.917/0.917/0.916/0.912/0.894.
+
 ### Next
-Run `hw_probe_hybrid` (reproduce the table) and `hw_probe_rate_e2e` (rate version,
-both stages impaired). Then formalize: analytic phase-error bound and the required
-bits as a function of (Nt, B, fc, theta_t), plus the TD-count/precision trade
-against the AoSA baseline.
+Re-run `hw_probe_rate_e2e` (corrected). Then formalize: analytic phase-error bound
+and required bits as a function of (Nt, B, fc, theta_t) — expect roughly
+`bits >~ log2(Nt*d*|theta_t|*B/c)` for the hybrid vs the same with `fc` in place
+of `B` for pure-TD — plus the TD-count x TD-precision cost surface against the
+AoSA baseline.
 

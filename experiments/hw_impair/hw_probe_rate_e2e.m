@@ -9,6 +9,11 @@
 %   - naive  DDBS (all delay in the TTD)   = baseline architecture
 %   - hybrid DDBS (PS absorbs the fc term) = proposed
 % against ideal DDBS and Perfect CSI. This is the figure the paper is built on.
+%
+% IMPORTANT: each arm uses ONE architecture end-to-end -- the naive arm trains and
+% serves with pure-TD beams, the hybrid arm trains and serves with the TD-PS split.
+% An earlier version applied the fix only to training and served with a pure-TD
+% beam; the serving beam then dominated and the hybrid advantage vanished.
 % ========================================================================
 clear; clc;
 
@@ -33,11 +38,12 @@ for it=1:N_iter
     CH{it} = near_field_channel(Nt,d,fc,B,M,r,th);
 end
 
-runavg = @(wfun,lsb) mean(cellfun(@(h) ...
-    max(training_ddbs_e2e(Nt,B,fc,f,M,d,h,wfun(),focus_loc,SNR_t,SNR_dB,Q,K,lsb,0)), CH));
+% hyb selects BOTH the training-beam generator and the serving-beam architecture
+runavg = @(wfun,lsb,hyb) mean(cellfun(@(h) ...
+    max(training_ddbs_e2e(Nt,B,fc,f,M,d,h,wfun(),focus_loc,SNR_t,SNR_dB,Q,K,lsb,0,hyb)), CH));
 
 wl_ideal = @() delay_polar_2d(Nt,B,fc,M,d,theta1,theta2,alpha1,alpha2,K);
-r_ideal = runavg(wl_ideal, Inf);
+r_ideal = runavg(wl_ideal, Inf, false);
 rp = mean(cellfun(@(h) sum(arrayfun(@(m) ...
         log2(1+SNR_t*abs(h(m,:)*(exp(1j*angle(h(m,:)'))/sqrt(Nt)))^2)/M, 1:M)), CH));
 fprintf('ideal DDBS %.3f | Perfect CSI %.3f  (SNR %d dB, K=%d)\n\n', r_ideal, rp, SNR_dB, K);
@@ -45,7 +51,7 @@ fprintf('ideal DDBS %.3f | Perfect CSI %.3f  (SNR %d dB, K=%d)\n\n', r_ideal, rp
 fprintf('%5s %9s | %9s %9s\n','B_td','LSB[ps]','naive','HYBRID');
 for Btd = [16 14 13 12 11 10 9 8]
     lsb = tau_rng/2^Btd; imp = struct('Btd',Btd);
-    rn = runavg(@() ddbs_beam_impaired(Nt,B,fc,M,d,theta1,theta2,alpha1,alpha2,K,imp), lsb);
-    rh = runavg(@() ddbs_beam_hybrid  (Nt,B,fc,M,d,theta1,theta2,alpha1,alpha2,K,imp), lsb);
+    rn = runavg(@() ddbs_beam_impaired(Nt,B,fc,M,d,theta1,theta2,alpha1,alpha2,K,imp), lsb, false);
+    rh = runavg(@() ddbs_beam_hybrid  (Nt,B,fc,M,d,theta1,theta2,alpha1,alpha2,K,imp), lsb, true);
     fprintf('%5d %9.1f | %9.3f %9.3f\n', Btd, lsb*1e12, rn, rh);
 end
