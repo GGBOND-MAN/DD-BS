@@ -1,0 +1,7 @@
+# Extracted baseline code (lives as a zip on the main branch)
+baseline_code/
+# Large artifacts kept on the main branch, not this working branch
+code_nf_distance_dependent_rainbow.zip
+A_Hardware-Efficient_Hybrid_Beamforming_Architecture_for_Near-Field_Beam_Training_in_6G_Wideband_XL-MIMO_Systems.pdf
+# Local experiment outputs
+experiments/derisk/*_results.mat
