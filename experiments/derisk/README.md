@@ -81,6 +81,18 @@ if the surface fuses paths into one blob even at high SNR.
 The greedy extractor is **not** the proposed algorithm — it only checks whether
 the information needed to separate paths is present in the DDBS observation.
 
+### Gate C — phase-aware separability tie-breaker (`derisk_gateC.m`)
+Gate B correlates **power** `|y|^2` and so discards the cross-subcarrier **phase**
+that the "path = trajectory" hook depends on. Gate C keeps the **complex**
+observation `y = h_m · w_DDBS` and runs **complex OMP** against a complex DDBS
+dictionary (`build_complex_dictionary.m`), with oracle sparsity `L` (best case).
+
+**GO** if complex OMP reliably recovers ≥2 of `L` paths and detection *improves*
+with SNR → the separability is real and was hidden by the power-domain MF;
+proceed to design the complex / super-resolution estimator. **NO-GO** if it also
+saturates at ~`1/L` (LoS only) even at high SNR → the DDBS observation genuinely
+cannot separate these paths with `K=3`; abandon the separation hook.
+
 ---
 
 ## Files
