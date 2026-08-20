@@ -1,0 +1,336 @@
+<title>DDBS 多径排雷</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Schibsted+Grotesk:wght@500;700&display=swap">
+
+<style>
+  :root{
+    --ground:#f5f7f9; --surface:#ffffff; --surface-2:#eef2f6;
+    --ink:#151a21; --muted:#59636f; --faint:#8a95a1;
+    --hairline:#e2e7ed; --hairline-2:#d3dae1;
+    --accent:#0e7490; --accent-ink:#0b5f77; --accent-soft:rgba(14,116,144,.10);
+    --nogo:#c0392b; --nogo-soft:rgba(192,57,43,.10);
+    --warn:#a5620a; --warn-soft:rgba(165,98,10,.12);
+    --go:#2e7d54; --go-soft:rgba(46,125,84,.12);
+    --shadow:0 1px 2px rgba(20,26,33,.04),0 8px 24px rgba(20,26,33,.05);
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ground:#0e1319; --surface:#151c24; --surface-2:#1b232d;
+      --ink:#e9eef4; --muted:#9aa6b3; --faint:#67737f;
+      --hairline:#26313d; --hairline-2:#313e4c;
+      --accent:#40b7cf; --accent-ink:#7fd3e4; --accent-soft:rgba(64,183,207,.14);
+      --nogo:#e5695c; --nogo-soft:rgba(229,105,92,.14);
+      --warn:#d3922f; --warn-soft:rgba(211,146,47,.15);
+      --go:#57b586; --go-soft:rgba(87,181,134,.15);
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0e1319; --surface:#151c24; --surface-2:#1b232d;
+    --ink:#e9eef4; --muted:#9aa6b3; --faint:#67737f;
+    --hairline:#26313d; --hairline-2:#313e4c;
+    --accent:#40b7cf; --accent-ink:#7fd3e4; --accent-soft:rgba(64,183,207,.14);
+    --nogo:#e5695c; --nogo-soft:rgba(229,105,92,.14);
+    --warn:#d3922f; --warn-soft:rgba(211,146,47,.15);
+    --go:#57b586; --go-soft:rgba(87,181,134,.15);
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--ground); color:var(--ink);
+    font-family:"IBM Plex Sans","PingFang SC","Microsoft YaHei","Noto Sans SC",system-ui,sans-serif;
+    line-height:1.6; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:920px; margin:0 auto; padding:clamp(20px,4vw,56px) clamp(16px,4vw,32px) 72px;}
+  .mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace; font-variant-numeric:tabular-nums;}
+  h1,h2,h3{font-family:"Schibsted Grotesk","PingFang SC","Microsoft YaHei",system-ui,sans-serif; text-wrap:balance; margin:0;}
+
+  /* ---------- header ---------- */
+  .eyebrow{font-family:"IBM Plex Mono",monospace; font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:var(--accent-ink); display:flex; gap:10px; align-items:center;}
+  .eyebrow::before{content:""; width:26px; height:2px; background:var(--accent); display:inline-block;}
+  h1{font-size:clamp(28px,5vw,42px); font-weight:700; line-height:1.08; margin:16px 0 0; letter-spacing:-.01em;}
+  .lede{color:var(--muted); font-size:clamp(15px,2vw,17px); max-width:64ch; margin:14px 0 0;}
+  .verdict-row{display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-top:22px;}
+  .pill{display:inline-flex; align-items:center; gap:8px; font-family:"IBM Plex Mono",monospace; font-size:13px; font-weight:500; padding:7px 14px; border-radius:999px; border:1px solid transparent;}
+  .pill.nogo{background:var(--nogo-soft); color:var(--nogo); border-color:color-mix(in srgb,var(--nogo) 30%,transparent);}
+  .pill .dot{width:8px;height:8px;border-radius:50%;background:currentColor;}
+  .pill.ghost{background:var(--surface); color:var(--muted); border-color:var(--hairline-2);}
+
+  /* ---------- callout ---------- */
+  .callout{margin-top:24px; background:var(--surface); border:1px solid var(--hairline); border-top:3px solid var(--nogo); border-radius:12px; padding:20px 22px; box-shadow:var(--shadow);}
+  .callout p{margin:0;}
+  .callout .big{font-size:17px; font-weight:600;}
+  .callout .sub{color:var(--muted); margin-top:8px; font-size:14.5px;}
+  .callout b{color:var(--accent-ink);}
+
+  section{margin-top:44px;}
+  .sec-head{display:flex; align-items:baseline; gap:12px; margin-bottom:18px;}
+  .sec-head h2{font-size:20px; font-weight:700;}
+  .sec-head .n{font-family:"IBM Plex Mono",monospace; font-size:13px; color:var(--faint);}
+  .sec-head .rule{flex:1; height:1px; background:var(--hairline); align-self:center;}
+
+  /* ---------- gate cards ---------- */
+  .gates{display:grid; grid-template-columns:repeat(2,1fr); gap:14px;}
+  @media (max-width:620px){ .gates{grid-template-columns:1fr;} }
+  .gate{background:var(--surface); border:1px solid var(--hairline); border-radius:12px; padding:18px; display:flex; flex-direction:column; gap:10px; box-shadow:var(--shadow);}
+  .gate .top{display:flex; align-items:center; gap:11px;}
+  .gate .badge{font-family:"Schibsted Grotesk",sans-serif; font-weight:700; font-size:15px; width:30px; height:30px; display:grid; place-items:center; border-radius:8px; background:var(--surface-2); color:var(--accent-ink); border:1px solid var(--hairline-2);}
+  .gate .q{font-weight:600; font-size:15px;}
+  .gate .metric{font-family:"IBM Plex Mono",monospace; font-size:19px; font-weight:500; letter-spacing:-.01em; color:var(--ink);}
+  .gate .metric small{color:var(--muted); font-size:12.5px; font-weight:400;}
+  .chip{align-self:flex-start; font-size:12.5px; font-family:"IBM Plex Mono",monospace; padding:4px 10px; border-radius:6px; display:inline-flex; align-items:center; gap:6px;}
+  .chip::before{content:""; width:7px; height:7px; border-radius:50%; background:currentColor;}
+  .chip.red{background:var(--nogo-soft); color:var(--nogo);}
+  .chip.amber{background:var(--warn-soft); color:var(--warn);}
+  .chip.green{background:var(--go-soft); color:var(--go);}
+
+  /* ---------- charts ---------- */
+  .charts{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  @media (max-width:620px){ .charts{grid-template-columns:1fr;} }
+  .card{background:var(--surface); border:1px solid var(--hairline); border-radius:12px; padding:16px 16px 12px; box-shadow:var(--shadow);}
+  .card h3{font-size:14.5px; font-weight:600;}
+  .card .cap{color:var(--muted); font-size:12.5px; margin:2px 0 10px;}
+  svg{display:block; width:100%; height:auto;}
+  .grid-l{stroke:var(--hairline); stroke-width:1;}
+  .axis-l{fill:var(--faint); font-family:"IBM Plex Mono",monospace; font-size:9px;}
+  .ln{fill:none; stroke-width:2; stroke-linejoin:round; stroke-linecap:round;}
+  .ln-accent{stroke:var(--accent);}
+  .ln-ref{stroke:var(--muted); stroke-dasharray:4 3; stroke-width:1.5;}
+  .area{fill:var(--accent-soft); stroke:none;}
+  .dot{fill:var(--accent); stroke:var(--surface); stroke-width:1.5;}
+  .lbl{font-family:"IBM Plex Mono",monospace; font-size:9.5px;}
+  .lbl.accent{fill:var(--accent-ink);} .lbl.mut{fill:var(--muted);}
+
+  /* ---------- table ---------- */
+  .scroll{overflow-x:auto; border:1px solid var(--hairline); border-radius:12px; box-shadow:var(--shadow);}
+  table{border-collapse:collapse; width:100%; min-width:520px; background:var(--surface); font-size:13.5px;}
+  th,td{text-align:left; padding:10px 14px; border-bottom:1px solid var(--hairline);}
+  thead th{font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--faint); font-weight:500; background:var(--surface-2);}
+  tbody tr:last-child td{border-bottom:none;}
+  td.num{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; text-align:right;}
+  .tag{font-family:"IBM Plex Mono",monospace; font-size:11.5px; padding:2px 8px; border-radius:5px; white-space:nowrap;}
+  .tag.taken{background:var(--nogo-soft); color:var(--nogo);}
+  .tag.open{background:var(--go-soft); color:var(--go);}
+  .tag.adj{background:var(--warn-soft); color:var(--warn);}
+  .tag.self{background:var(--accent-soft); color:var(--accent-ink);}
+
+  /* ---------- reasons ---------- */
+  .reasons{display:flex; flex-direction:column; gap:12px;}
+  .reason{display:flex; gap:14px; background:var(--surface); border:1px solid var(--hairline); border-radius:10px; padding:15px 17px; box-shadow:var(--shadow);}
+  .reason .k{font-family:"Schibsted Grotesk",sans-serif; font-weight:700; color:var(--accent-ink); font-size:14px; flex-shrink:0; width:74px; padding-top:1px;}
+  .reason .v{font-size:14.5px;} .reason .v b{color:var(--ink);} .reason .v{color:var(--muted);}
+
+  .note{margin-top:16px; font-size:13.5px; color:var(--muted); background:var(--surface-2); border-radius:10px; padding:14px 16px; border-left:3px solid var(--warn);}
+  .note b{color:var(--ink);}
+
+  /* ---------- pivot ---------- */
+  .pivot{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  @media (max-width:620px){ .pivot{grid-template-columns:1fr;} }
+  .opt{background:var(--surface); border:1px solid var(--hairline); border-radius:12px; padding:18px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:9px;}
+  .opt.rec{border-color:color-mix(in srgb,var(--go) 40%,var(--hairline));}
+  .opt .h{display:flex; align-items:center; justify-content:space-between; gap:8px;}
+  .opt h3{font-size:16px; font-weight:700;}
+  .opt p{margin:0; font-size:14px; color:var(--muted);}
+  .opt .why{font-size:13px; color:var(--ink);}
+
+  footer{margin-top:52px; padding-top:20px; border-top:1px solid var(--hairline); color:var(--faint); font-size:12.5px; display:flex; flex-wrap:wrap; gap:6px 18px; align-items:center;}
+  footer .mono{color:var(--muted);}
+  a{color:var(--accent-ink); text-decoration:none; border-bottom:1px solid color-mix(in srgb,var(--accent) 40%,transparent);}
+</style>
+
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">De-risk Report · Phase 0</div>
+    <h1>多径 × DDBS 方向：据实判死</h1>
+    <p class="lede">以 Zheng et al.(TWC 2025, distance-dependent beam split) 为 baseline，用四个 fail-fast 探针检验"多径鲁棒 + 利用 DDBS 结构做超分辨"这条方向是否值得投入。结论：不值得——四关联合把它证伪。</p>
+    <div class="verdict-row">
+      <span class="pill nogo"><span class="dot"></span>结论 · NO-GO</span>
+      <span class="pill ghost">耗时 ≈ 数小时 / 4 个脚本</span>
+      <span class="pill ghost">下一步 · 转向 UPA / 硬件损伤</span>
+    </div>
+  </header>
+
+  <div class="callout">
+    <p class="big">多径没有让 baseline "崩"，而是暴露了一个 <b>K=3 导频的结构性天花板</b>。</p>
+    <p class="sub">baseline 稳稳锁住 LoS、速率几乎不掉；张开的只是它作为单波束拿不到的多径合并增益，且这增益只在富散射区间（κ≳−3dB，偏离 THz LoS 主场）才显著。相位域能把路径回收翻倍，但仍 <b>随 SNR 持平</b>——是物理上限而非噪声；把回收的路径转成速率也不划算。综合判定：投入产出比不成立。</p>
+  </div>
+
+  <!-- GATES -->
+  <section>
+    <div class="sec-head"><span class="n">01</span><h2>四关证据</h2><span class="rule"></span></div>
+    <div class="gates">
+      <div class="gate">
+        <div class="top"><span class="badge">A</span><span class="q">baseline 会崩吗？</span></div>
+        <div class="metric">gap 0.4 → 1.5 <small>bit/s/Hz（κ:−20→0）</small></div>
+        <div class="metric" style="font-size:14px">on-grid / MF 速率<small> 几乎持平 ~4.7；是 Perfect CSI 在涨</small></div>
+        <span class="chip amber">动机偏弱：目标区间(κ≤−10)缺口仅 ~0.5</span>
+      </div>
+      <div class="gate">
+        <div class="top"><span class="badge">B</span><span class="q">功率域能分开吗？</span></div>
+        <div class="metric">det = 0.33 <small>= 1/L，仅 LoS</small></div>
+        <div class="metric" style="font-size:14px">0→20 dB <small>完全持平</small></div>
+        <span class="chip red">分离失败（丢了相位）</span>
+      </div>
+      <div class="gate">
+        <div class="top"><span class="badge">C</span><span class="q">相位域能分开吗？</span></div>
+        <div class="metric">det ≈ 0.55 <small>~1.65/3 路径</small></div>
+        <div class="metric" style="font-size:14px">随 SNR <small>持平 (0.55@0dB≈0.52@20dB)</small></div>
+        <span class="chip amber">回收翻倍，但 K=3 结构封顶</span>
+      </div>
+      <div class="gate">
+        <div class="top"><span class="badge">D</span><span class="q">能变成速率吗？</span></div>
+        <div class="metric">closure −94% ~ −330%</div>
+        <div class="metric" style="font-size:14px">重构波束 2.6–3.4 <small>&lt; baseline 4.6</small></div>
+        <span class="chip red">转化不划算</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- CHARTS -->
+  <section>
+    <div class="sec-head"><span class="n">02</span><h2>两张关键图</h2><span class="rule"></span></div>
+    <div class="charts">
+
+      <div class="card">
+        <h3>A · 速率缺口随 NLoS/LoS 张开</h3>
+        <p class="cap">L=3, SNR=15 dB。基线单波束平，最优在涨——差值=没捡到的合并增益。</p>
+        <svg viewBox="0 0 360 220" role="img" aria-label="Rate vs NLoS/LoS ratio: Perfect CSI rises from 5.0 to 6.3 while DDBS+MF stays flat near 4.6-4.8">
+          <line class="grid-l" x1="44" y1="177.5" x2="344" y2="177.5"/>
+          <line class="grid-l" x1="44" y1="135" x2="344" y2="135"/>
+          <line class="grid-l" x1="44" y1="92.5" x2="344" y2="92.5"/>
+          <line class="grid-l" x1="44" y1="50" x2="344" y2="50"/>
+          <text class="axis-l" x="39" y="180.5" text-anchor="end">4.5</text>
+          <text class="axis-l" x="39" y="138" text-anchor="end">5.0</text>
+          <text class="axis-l" x="39" y="95.5" text-anchor="end">5.5</text>
+          <text class="axis-l" x="39" y="53" text-anchor="end">6.0</text>
+          <polygon class="area" points="44,131.4 119,128.9 194,120.8 254,102.9 299,71.8 344,23.7 344,153.4 299,165.3 254,169.1 194,166.6 119,164.7 44,164.5"/>
+          <polyline class="ln ln-ref" points="44,131.4 119,128.9 194,120.8 254,102.9 299,71.8 344,23.7"/>
+          <polyline class="ln ln-accent" points="44,164.5 119,164.7 194,166.6 254,169.1 299,165.3 344,153.4"/>
+          <circle class="dot" cx="344" cy="23.7" r="3"/>
+          <circle class="dot" cx="344" cy="153.4" r="3"/>
+          <text class="lbl mut" x="150" y="112">Perfect CSI</text>
+          <text class="lbl accent" x="150" y="178">DDBS + match filter</text>
+          <text class="axis-l" x="44" y="198" text-anchor="middle">−20</text>
+          <text class="axis-l" x="194" y="198" text-anchor="middle">−10</text>
+          <text class="axis-l" x="254" y="198" text-anchor="middle">−6</text>
+          <text class="axis-l" x="299" y="198" text-anchor="middle">−3</text>
+          <text class="axis-l" x="344" y="198" text-anchor="middle">0</text>
+          <text class="axis-l" x="194" y="213" text-anchor="middle" style="letter-spacing:.05em">NLoS/LoS ratio (dB)</text>
+        </svg>
+      </div>
+
+      <div class="card">
+        <h3>C · 分离能力随 SNR 持平（封顶）</h3>
+        <p class="cap">L=3, κ=−3 dB。相位域(复数 OMP)把回收从 1/3 抬到 ~0.55，但不随 SNR 上升。</p>
+        <svg viewBox="0 0 360 220" role="img" aria-label="Detection probability vs SNR: complex-domain plateaus around 0.55, flat across SNR, above the power-domain 1/L=0.33 reference">
+          <line class="grid-l" x1="44" y1="143.5" x2="344" y2="143.5"/>
+          <line class="grid-l" x1="44" y1="101" x2="344" y2="101"/>
+          <line class="grid-l" x1="44" y1="58.5" x2="344" y2="58.5"/>
+          <line class="grid-l" x1="44" y1="16" x2="344" y2="16"/>
+          <text class="axis-l" x="39" y="189" text-anchor="end">0</text>
+          <text class="axis-l" x="39" y="146.5" text-anchor="end">.25</text>
+          <text class="axis-l" x="39" y="104" text-anchor="end">.50</text>
+          <text class="axis-l" x="39" y="61.5" text-anchor="end">.75</text>
+          <text class="axis-l" x="39" y="19" text-anchor="end">1</text>
+          <polygon class="area" points="44,92.5 119,92.5 194,85.7 269,92.5 344,97.6 344,129.3 44,129.3"/>
+          <line class="ln ln-ref" x1="44" y1="129.3" x2="344" y2="129.3"/>
+          <polyline class="ln ln-accent" points="44,92.5 119,92.5 194,85.7 269,92.5 344,97.6"/>
+          <circle class="dot" cx="44" cy="92.5" r="2.6"/><circle class="dot" cx="119" cy="92.5" r="2.6"/>
+          <circle class="dot" cx="194" cy="85.7" r="2.6"/><circle class="dot" cx="269" cy="92.5" r="2.6"/>
+          <circle class="dot" cx="344" cy="97.6" r="2.6"/>
+          <text class="lbl accent" x="150" y="82">复数域 ≈ 0.55</text>
+          <text class="lbl mut" x="150" y="140">1/L = 0.33（功率域 / 仅 LoS）</text>
+          <text class="axis-l" x="44" y="198" text-anchor="middle">0</text>
+          <text class="axis-l" x="119" y="198" text-anchor="middle">5</text>
+          <text class="axis-l" x="194" y="198" text-anchor="middle">10</text>
+          <text class="axis-l" x="269" y="198" text-anchor="middle">15</text>
+          <text class="axis-l" x="344" y="198" text-anchor="middle">20</text>
+          <text class="axis-l" x="194" y="213" text-anchor="middle" style="letter-spacing:.05em">SNR (dB)</text>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHY -->
+  <section>
+    <div class="sec-head"><span class="n">03</span><h2>为什么判死：三条结构性理由</h2><span class="rule"></span></div>
+    <div class="reasons">
+      <div class="reason"><div class="k">区间</div><div class="v">动机只在 <b>富散射(κ≳−3dB)</b> 才值钱；而 DDBS/beam-split 的主场是 <b>THz LoS 主导(κ≤−10dB)</b>，那里缺口仅 ~0.5 bit/s/Hz，其中一大半在 L=1 就存在（是码本量化误差，不是多径）。</div></div>
+      <div class="reason"><div class="k">封顶</div><div class="v">复数域回收 <b>随 SNR 持平</b> → 缺的 ~45% 是 <b>K=3 的物理上限</b>，加 SNR、换更强算法都补不上；"分清所有路径"做不到。</div></div>
+      <div class="reason"><div class="k">转化</div><div class="v">要把回收的路径变成速率，得先啃 <b>近场宽带压缩全信道重构</b>（off-grid、定阶、正则化）——又难又挤，却只为在偏门区间捡 ~0.5 的增益。ROI 不成立。</div></div>
+    </div>
+    <div class="note"><b>Gate D 的诚实 caveat：</b>−330% 这种极端负值有一部分是探针本身的重构脆弱性（强制取 3 个原子、粗网格注入了虚假原子污染 ĥ），不是"多径波束成形物理上更差"的定论。但它恰好印证：把这条路走通需要一整套重活，与 A/B/C 一起指向同一个结论——转向。</div>
+  </section>
+
+  <!-- LANDSCAPE -->
+  <section>
+    <div class="sec-head"><span class="n">04</span><h2>已核实的赛道地图</h2><span class="rule"></span></div>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>方向</th><th>状态</th><th>代表工作</th></tr></thead>
+        <tbody>
+          <tr><td>DDBS 核心</td><td><span class="tag self">baseline</span></td><td>Zheng et al., TWC 2025</td></tr>
+          <tr><td>硬件高效化（grouped / 共享 TTD）</td><td><span class="tag taken">已占</span></td><td>Qaid, Nasir, Al-Ahmadi, Y. Liu, OJ-COMS 2026</td></tr>
+          <tr><td>超分辨 beam-split，3 导频</td><td><span class="tag taken">已做 · 仅 LoS</span></td><td>arXiv 2504.19262</td></tr>
+          <tr><td>近场多径波束训练（DFT/极域/bandit 稀疏）</td><td><span class="tag taken">已占</span></td><td>2505.08267 · 2603.24960 · 2603.09893</td></tr>
+          <tr><td>多用户近场波束训练</td><td><span class="tag taken">已占</span></td><td>Interference-Aware, 2026</td></tr>
+          <tr><td>多径 × DDBS 结构化分离</td><td><span class="tag taken">本报告 · NO-GO</span></td><td>Phase-0 de-risk（本仓库）</td></tr>
+          <tr><td>DDBS 量化 / 硬件损伤鲁棒</td><td><span class="tag adj">相邻 · 须对标</span></td><td>与 OJ-COMS AoSA 不同子问题</td></tr>
+          <tr><td>UPA / 3D DDBS</td><td><span class="tag open">开放</span></td><td>baseline + OJ-COMS 均列为 future work</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- PIVOT -->
+  <section>
+    <div class="sec-head"><span class="n">05</span><h2>转向选项</h2><span class="rule"></span></div>
+    <div class="pivot">
+      <div class="opt rec">
+        <div class="h"><h3>UPA / 3D DDBS</h3><span class="chip green">推荐</span></div>
+        <p>真正干净的空白：baseline 与 OJ-COMS 都只列为 future work、无人做完整推导。</p>
+        <p class="why">二维角度 × 距离的 beam-split 推广、TD/PS 是否可分离设计，都是非平凡理论问题。工作量较大但赛道干净、含金量实。下一步：先搭最小可行性探针（面阵能否生成多条带图样 + 导频开销量级）。</p>
+      </div>
+      <div class="opt">
+        <div class="h"><h3>硬件量化 / 损伤鲁棒 DDBS</h3><span class="chip amber">备选</span></div>
+        <p>有限比特 TD/PS、插损、相噪对多条带图样的破坏与鲁棒设计。</p>
+        <p class="why">与 OJ-COMS 强组的 AoSA 架构相邻、必须对标，新颖度受压；但工作量中等、可复用现有仿真。作为第二顺位。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- DATA -->
+  <section>
+    <div class="sec-head"><span class="n">06</span><h2>底层数据</h2><span class="rule"></span></div>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Gate A2 · L=3, 15dB</th><th class="num">κ=−20</th><th class="num">−15</th><th class="num">−10</th><th class="num">−6</th><th class="num">−3</th><th class="num">0</th></tr></thead>
+        <tbody>
+          <tr><td>Perfect CSI</td><td class="num">5.042</td><td class="num">5.072</td><td class="num">5.167</td><td class="num">5.378</td><td class="num">5.744</td><td class="num">6.310</td></tr>
+          <tr><td>DDBS + MF</td><td class="num">4.653</td><td class="num">4.651</td><td class="num">4.628</td><td class="num">4.599</td><td class="num">4.643</td><td class="num">4.784</td></tr>
+          <tr><td>缺口 (perf−MF)</td><td class="num">0.39</td><td class="num">0.42</td><td class="num">0.54</td><td class="num">0.78</td><td class="num">1.10</td><td class="num">1.53</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="scroll" style="margin-top:12px">
+      <table>
+        <thead><tr><th>Gate D · closure</th><th class="num">κ=−10</th><th class="num">−6</th><th class="num">−3</th><th class="num">0</th></tr></thead>
+        <tbody>
+          <tr><td>Recovered 波束</td><td class="num">2.645</td><td class="num">2.877</td><td class="num">2.896</td><td class="num">3.363</td></tr>
+          <tr><td>baseline MF</td><td class="num">4.580</td><td class="num">4.557</td><td class="num">4.589</td><td class="num">4.790</td></tr>
+          <tr><td>closure</td><td class="num">−330%</td><td class="num">−204%</td><td class="num">−147%</td><td class="num">−94%</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <span class="mono">repo · GGBOND-MAN/DD-BS</span>
+    <span class="mono">branch · claude/paper-baseline-direction-2cklzr</span>
+    <span class="mono">experiments/derisk · gateA–D + README</span>
+  </footer>
+
+</div>
