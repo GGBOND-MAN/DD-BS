@@ -6,3 +6,4 @@ A_Hardware-Efficient_Hybrid_Beamforming_Architecture_for_Near-Field_Beam_Trainin
 # Local experiment outputs
 experiments/derisk/*_results.mat
 experiments/upa/*_results.mat
+experiments/hw_impair/*_results.mat
