@@ -16,21 +16,27 @@ function [w, n_ttd, lsb_used] = ddbs_beam_arch(Nt,B,fc,M,d,theta1,theta2,alpha1,
 %            Note their full scheme ALSO redesigns the DDBS parameters and adds
 %            sector-shift / distance-interleaving / extra pilots, which this does
 %            not reproduce -- so treat it as the architecture, not their result.
-%   'kron'   PROPOSED two-stage / Kronecker TTD        -> n_ttd = Nt/P + P
+%   'kron'   Kronecker two-stage delay factorization    -> Nt/P + P DISTINCT
+%            delay VALUES. NOTE (erratum): this is NOT a physical element-count
+%            reduction. Sharing applies a delay before the fan-out so P antennas
+%            truly share one element; the Kronecker fine term C(n_q) must instead
+%            be realized per antenna, so the element count is Nt/P + Nt. Treat the
+%            returned n_ttd for 'kron' as a distinct-value count only.
 %
 % A serving (data) beam focused at (sin_theta, alpha) is just this function with
 % theta1=sin_theta, alpha1=alpha, theta2=alpha2=0, K=1 -- so the same hardware
 % model covers both training and data beams.
 %
-% Kronecker rationale. With n = n_g + n_q (n_g the sub-array offset, n_q the
-% position inside it -- an exact split), the DDBS delay
+% Kronecker rationale (distinct-value reduction only -- see the note above).
+% With n = n_g + n_q (n_g the sub-array offset, n_q the position inside it -- an
+% exact split), the DDBS delay
 %       tau_n = (n*d*theta_t - n^2*d^2*alpha_t)/c
 % has a LINEAR term that is exactly separable, tau ~ A(n_g) + C(n_q), so
-% Nt/P coarse TTDs plus P fine TTDs (reused by every sub-array) suffice. The only
-% residual is the quadratic cross term
+% Nt/P coarse plus P fine delay VALUES suffice (the fine values recur across
+% sub-arrays but need their own hardware). The only residual is the cross term
 %       d_tau = 2*n_g*n_q*d^2*|alpha_t|/c   <=  Nt*P*d^2*|alpha_t|/(2c),
 % which is small because the DDBS delay is linear-dominated (140 ns vs 0.72 ns
-% here). Total TTDs Nt/P + P is minimised at P = sqrt(Nt) -> 2*sqrt(Nt).
+% here). The distinct-value count Nt/P + P is minimised at P = sqrt(Nt).
 %
 % Btd/Bps: TD/PS resolution in bits (Inf = ideal). The PS always carries the exact
 % frequency-independent term 2*pi*fc*tau_n (the hybrid split), so this function
