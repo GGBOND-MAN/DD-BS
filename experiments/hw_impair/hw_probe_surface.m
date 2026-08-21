@@ -8,6 +8,11 @@
 % cut the count (NOT a reproduction of the OJ-COMS AoSA scheme, which also
 % redesigns the training procedure -- see ddbs_beam_arch.m).
 %
+% Arms: 'ojcoms' (literal AoSA form of the OJ-COMS architecture -- their TTD on
+% the sub-array-centre grid with a plain per-antenna DDBS phase shifter),
+% 'shared' (the same TTD sharing but with the hybrid PS giving exact per-antenna
+% fc phase -- the STRONGEST fair sharing baseline), and 'kron' (proposed).
+%
 % Pre-validated (Nt=256, ideal-TD, hybrid PS; ideal full-TTD gain = 0.975):
 %   #TTD :   128     64      32
 %   shared: 0.668  0.402   0.238
@@ -35,12 +40,12 @@ Btd_list = [Inf 14 13 12 11 10 9];
 fprintf('ideal full-TTD, ideal bits : %.3f\n\n', ...
   gainof(ddbs_beam_arch(Nt,B,fc,M,d,theta1,theta2,alpha1,alpha2,K,'full',1,Inf,Inf)));
 
-for arch = ["shared","kron"]
+for arch = ["ojcoms","shared","kron"]
     fprintf('=== arch = %s ===\n', arch);
     fprintf('%6s %7s |', 'P', '#TTD');
     fprintf('%8s', string(Btd_list)); fprintf('   <- B_td\n');
     for P = P_list
-        if arch=="shared" && P==1, continue; end
+        if (arch=="shared"||arch=="ojcoms") && P==1, continue; end
         [w,ntd] = ddbs_beam_arch(Nt,B,fc,M,d,theta1,theta2,alpha1,alpha2,K,char(arch),P,Inf,Inf);
         fprintf('%6d %7d |', P, ntd);
         for Btd = Btd_list
