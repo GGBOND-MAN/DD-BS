@@ -72,16 +72,33 @@ for a = 1:2
     fprintf('\n');
 end
 
-% bits needed to stay within 5% of each arm's own infinite-resolution rate
-fprintf('\nBits needed to stay within 5%% of the same arm at infinite resolution:\n');
+% Minimum bits that still stay within 5% of THAT ARM's own infinite-resolution
+% rate. Comparing each arm to its own reference isolates the QUANTIZATION
+% sensitivity from the (separate) sharing loss. Walk downward in resolution and
+% stop at the first failure, so the reported number is the lowest usable one.
+fprintf('\nMinimum bits within 5%% of the same arm at infinite resolution:\n');
 for a = 1:2
     ref = res(a,1); need = NaN;
-    for j = numel(Btd_list):-1:2
-        if res(a,j) >= 0.95*ref, need = Btd_list(j); end
+    for j = 2:numel(Btd_list)
+        if res(a,j) >= 0.95*ref, need = Btd_list(j); else, break; end
     end
-    fprintf('  %-26s : %s bits\n', labs{a}, string(need));
+    if need == Btd_list(end)
+        fprintf('  %-26s : <= %d bits (sweep floor -- extend Btd_list)\n', labs{a}, need);
+    else
+        fprintf('  %-26s : %d bits\n', labs{a}, need);
+    end
 end
-fprintf('\n-> the gap between those two numbers is the contribution.\n');
+fprintf('-> the gap between those two numbers is the precision contribution.\n');
+
+% The reparameterization also shrinks the SHARING error, so it wins even at
+% infinite resolution; report that separately.
+fprintf('\nAt infinite TD resolution (pure sharing-error effect, no quantization):\n');
+fprintf('  %-26s : %.3f\n  %-26s : %.3f   (+%.0f%%)\n', ...
+        labs{1}, res(1,1), labs{2}, res(2,1), 100*(res(2,1)/res(1,1)-1));
+fprintf('  ideal full-TTD             : %.3f\n', r_ideal);
+fprintf(['\nNOTE: with N_iter=%d the flat arm fluctuates by a few %% (Monte-Carlo\n' ...
+         'noise, e.g. a 12-bit point can read above the infinite-resolution one).\n' ...
+         'Use N_iter >= 500 for the paper figure.\n'], N_iter);
 save('hw_probe_composition_results.mat','Btd_list','res','P','r_ideal');
 
 figure; hold on; box on; grid on;

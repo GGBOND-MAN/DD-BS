@@ -280,3 +280,47 @@ through parameter redesign, sector-shift and a larger pilot budget. The Kronecke
 structure instead keeps near-ideal rate at the original **3** pilots. Since their
 full scheme is not reproduced here, this must be offered as an explanation, never
 as "we beat them with fewer pilots".
+
+## 11. The reparameterization generalizes: it attenuates **any** delay error
+
+The composition run (`hw_probe_composition.m`, P=2, 128 shared TTDs, ideal
+full-TTD = 4.759) gave:
+
+| architecture | Inf | 15 | 14 | 13 | 12 | 11 | 10 bits |
+|---|---|---|---|---|---|---|---|
+| AoSA form (their split) | 2.664 | 2.647 | 2.302 | 1.333 | 0.077 | 0.094 | 0.093 |
+| **AoSA + reparameterization** | **4.132** | 4.120 | 4.121 | 4.164 | 4.362 | 4.060 | 4.159 |
+
+Two things follow.
+
+**(a) The precision claim, on a fixed architecture.** Staying within 5% of each
+arm's *own* infinite-resolution rate: their split needs **15 bits** (14 already
+fails at 2.302), the reparameterized version is still within 5% at the sweep floor
+of **10 bits** — a saving of **>= 5 bits** on an identical AoSA array. This is the
+composition claim, and it needs no reproduction of their scheme.
+
+**(b) It is not only about quantization.** At *infinite* resolution the
+reparameterization already wins, 2.664 -> **4.132 (+55%)**. There is no
+quantization error there, so the gain must come from elsewhere — and it does. The
+error model of §1-§2 never referred to quantization specifically:
+
+    any delay error d_tau  ->  phase error  2*pi * f_eff * d_tau
+
+`d_tau` can come from quantization, from **sub-array sharing** (`tau_g - tau_n`),
+or from fabrication jitter. The reparameterization lowers `f_eff` from `f_H` to
+`B/2` for **all of them alike**, a ~13x attenuation at these parameters. So it
+also makes AoSA sharing itself substantially more viable — a stronger and more
+general statement than "it fixes quantization", and the one the paper should make:
+
+> On a TTD-PS array, moving the frequency-independent term `2*pi*fc*tau_n` into
+> the phase shifter attenuates the beam-degradation caused by *any* delay error —
+> quantization, sub-array sharing, or fabrication — by the factor `2*f_H/B`.
+
+**Residual gap.** The reparameterized arm reaches 4.13 of the ideal 4.759 (87%);
+the remaining 13% is the sharing error that survives the `B/2` scaling. Honest to
+state: the reparameterization *attenuates* the sharing error, it does not remove it.
+
+**Monte-Carlo caution.** With `N_iter = 100` the flat arm fluctuates by a few
+percent (the 12-bit point reads 4.362, above its own infinite-resolution 4.132).
+The arm is flat within noise; use `N_iter >= 500` for the published figure and do
+not read an ordering into those wiggles.
