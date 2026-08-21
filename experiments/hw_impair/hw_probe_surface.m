@@ -1,10 +1,13 @@
 % ========================================================================
 % (B) THE 2-D HARDWARE COST SURFACE:  TD count  x  TD precision
 % ------------------------------------------------------------------------
-% The paper's headline figure. Two independent hardware axes:
-%   * PRECISION (bits)  -- relaxed by the hybrid TD-PS split (Contribution A)
-%   * COUNT (#TTD)      -- relaxed by the Kronecker two-stage TTD (Contribution B)
-% and they COMPOSE. Generic sub-array sharing is included as the reference way to
+% Two axes:
+%   * PRECISION (bits)          -- relaxed by the hybrid TD-PS split (Contribution A)
+%   * DISTINCT DELAY VALUES     -- reduced by the Kronecker factorization (B)
+% ERRATUM: the second axis was originally labelled "TD element count". That is
+% wrong -- Kronecker reduces distinct delay VALUES, not physical elements (sharing
+% applies the delay before the fan-out and genuinely shares hardware; the
+% Kronecker fine term does not). The precision axis is the load-bearing result. Generic sub-array sharing is included as the reference way to
 % cut the count (NOT a reproduction of the OJ-COMS AoSA scheme, which also
 % redesigns the training procedure -- see ddbs_beam_arch.m).
 %
@@ -16,9 +19,9 @@
 % Pre-validated (Nt=256, ideal-TD, hybrid PS; ideal full-TTD gain = 0.975):
 %   #TTD :   128     64      32
 %   shared: 0.668  0.402   0.238
-%   kron  : 0.975  0.973   0.941      <- 4x better at equal TD count
-% and Kronecker at 32 TTDs still gives 0.938 at 12-bit TD (vs 14+ bits needed
-% by a pure-TD design), i.e. ~8x fewer TTDs AND ~4 fewer bits each.
+%   kron  : 0.975  0.973   0.941      <- 4x better at an equal DISTINCT-VALUE count
+% and Kronecker at 32 distinct values still gives 0.938 at 12-bit TD (vs 14+ bits
+% needed by a pure-TD design).
 % ========================================================================
 clear; clc;
 

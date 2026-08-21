@@ -1,5 +1,22 @@
 # TD resolution requirement for DDBS beam training — derivation
 
+> ### ERRATUM (supersedes §7 as first written)
+> The Kronecker structure of §7 was originally claimed to cut the **number of TTD
+> elements** from `Nt` to `Nt/P + P` (an "8x reduction"). **That claim is wrong and
+> is retracted.** `Nt/P + P` counts *distinct delay values*, not physical elements.
+> Walking the signal flow shows why: in AoSA sharing the delay is applied **before**
+> the fan-out, so `P` antennas genuinely share one element (`G = Nt/P` elements). In
+> the Kronecker structure antenna `n = (g,q)` needs `A(n_g) + C(n_q)`; `A` can be
+> applied before the fan-out, but each of the `P` antennas then needs its **own**
+> physical `C` element — and the `C` values, though numerically identical across
+> sub-arrays, act on different signals and cannot share hardware. Element count is
+> `G + Nt`, i.e. **more** than a fully-connected array, in either ordering.
+> What the structure does reduce is the number of **distinct delay values**
+> (`Nt -> Nt/P + P`), which matters for a fixed-line-plus-switch implementation
+> (fewer line lengths to fabricate and calibrate) but is a far smaller benefit than
+> claimed. The measured gains in §7-§10 are unchanged; only the **cost axis they
+> are plotted against** was mislabelled. §7 is rewritten below accordingly.
+
 Analytic backing for the measured naive-vs-hybrid gap. All formulas are validated
 against the end-to-end simulation at the bottom.
 
@@ -103,12 +120,14 @@ between 9 and 8 bits — both exactly where the simulation shows them.
   (3.7 here, ~6 at 1 GHz), verified end-to-end, with the phase shifter *not*
   becoming the new bottleneck (3-bit PS still gives ~97%).
 - Orthogonal to the OJ-COMS AoSA result, which reduces the TD *count* assuming
-  ideal values: count x precision is a 2-D hardware-cost surface, and the two
-  contributions compose.
+  ideal delay values. This work addresses the *precision* dimension that they (and
+  all prior DDBS work) assume away, so the two **compose**: the reparameterization
+  can be applied on top of their architecture. That composition — not a claim of
+  beating them — is the defensible framing.
 
 ---
 
-## 7. Second axis: TD **count** — the Kronecker two-stage TTD
+## 7. A second, weaker lever: reducing the number of **distinct delay values**
 
 ### Why naive sub-array sharing is expensive for DDBS
 Sharing one TTD across `P` antennas leaves a residual `2*pi*(f_m-fc)*(tau_g - tau_n)`.
@@ -116,8 +135,10 @@ The intra-group delay spread is `P*d*|theta_t|/c`, and `|theta_t| ~ 33` for DDBS
 so even `P = 2` gives ~1.1 ns of spread — several radians at `B/2`. Measured
 focusing gain: `P = 2 -> 0.668`, `P = 4 -> 0.402`, `P = 8 -> 0.238`.
 
-### The structure that fixes it
-Split the antenna index exactly as `n = n_g + n_q` (`n_g` the sub-array offset,
+### A Kronecker factorization of the delay profile
+**Scope (see the erratum above): this reduces distinct delay *values*, not the
+number of physical delay elements.** Split the antenna index exactly as
+`n = n_g + n_q` (`n_g` the sub-array offset,
 `n_q` the position within it). Then
 
     tau_n = (n*d*theta_t - n^2*d^2*alpha_t)/c
@@ -130,8 +151,12 @@ near-exact), a two-stage bank of
 
     Nt/P coarse TTDs  +  P fine TTDs (reused by every sub-array)  =  Nt/P + P
 
-reproduces the delay profile. The count is minimised at `P = sqrt(Nt)`, giving
-**`2*sqrt(Nt)` TTDs** (32 instead of 256 at `Nt = 256`, an 8x reduction).
+reproduces the delay profile using only `Nt/P + P` **distinct delay values**,
+minimised at `P = sqrt(Nt)` -> `2*sqrt(Nt)` values (32 distinct values instead of
+256 at `Nt = 256`). Physical element count is **not** reduced — see the erratum.
+The practical benefit is therefore limited to fabrication/calibration of a
+fixed-delay-line bank, and this should be presented as a secondary observation,
+not as a hardware-cost contribution.
 
 ### Design rule for P
 The residual is bounded by `d_tau <= Nt*P*d^2*|alpha_t| / (2*c)`, so the worst-case
@@ -145,14 +170,16 @@ settings both terms land near `P = 16` (`eps_max = 1.4 rad`, gain 0.941).
 
 ### Measured surface (ideal TD, hybrid PS; ideal full-TTD = 0.975)
 
-| #TTD | 128 | 64 | 32 |
+| distinct delay values | 128 | 64 | 32 |
 |---|---|---|---|
 | generic sharing | 0.668 | 0.402 | 0.238 |
 | **Kronecker** | **0.975** | **0.973** | **0.941** |
 
 ~4x higher gain at equal TD count. And the two contributions **compose**:
-Kronecker at 32 TTDs still gives **0.938 at 12-bit** TD — ~8x fewer TTDs *and*
-~4 fewer bits each, versus 256 full-resolution (~14-bit) TTDs.
+Kronecker at 32 distinct values still gives **0.938 at 12-bit**. Note this is a
+*distinct-value* axis, not an element-count axis (erratum) — the load-bearing
+result on this plot is the **precision** relaxation, which holds for every
+architecture.
 
 `P = 16 = sqrt(Nt)` is confirmed optimal: `P = 32` needs *more* TTDs (40) and
 drops to 0.853.
@@ -166,14 +193,16 @@ The corrected sweep shows the `shared` arm is almost **bit-insensitive**
 
 * **Contribution A (hybrid TD-PS) is architecture-independent** — it repairs the
   precision axis for `full`, `shared` and `kron` alike.
-* **Contribution B (Kronecker) repairs the count axis** — it is what makes 32
-  TTDs usable at all.
+* **Contribution B (Kronecker) acts on the distinct-value axis** — it is what
+  keeps a 32-distinct-value delay profile usable. Per the erratum this is a much
+  weaker hardware claim than originally stated, and should be reported as a
+  secondary observation.
 
-| architecture | 32 TTD, 12-bit | axis repaired |
+| architecture | 32 values, 12-bit | axis addressed |
 |---|---|---|
 | AoSA form, unchanged DDBS parameters | 0.060 | none |
 | + hybrid TD-PS (A) | 0.237 | precision |
-| + Kronecker (B) | **0.938** | precision + count |
+| + Kronecker (B) | **0.938** | precision + distinct values |
 
 `hw_probe_ablation_rate.m` reproduces this table in the rate domain.
 
@@ -212,8 +241,10 @@ explains the gap in the literature.
 
 ## 10. Rate-domain ablation (measured) — `hw_probe_ablation_rate.m`
 
-All arms at a matched **32 TTDs** (`ojcoms`/`shared`: P=8 -> Nt/P; `kron`: P=16 ->
-Nt/P+P). Training and serving beams share one hardware model (same architecture,
+All arms at a matched **32 distinct delay values** (`ojcoms`/`shared`: P=8 ->
+Nt/P, which for these two *is* also the element count since sharing applies the
+delay before the fan-out; `kron`: P=16 -> Nt/P+P distinct values, element count
+unchanged — see erratum). Training and serving beams share one hardware model (same architecture,
 same absolute delay LSB). SNR 15 dB, K=3, single path.
 Ideal full-TTD DDBS = **4.753**, Perfect CSI = 5.028 bit/s/Hz.
 
@@ -224,7 +255,9 @@ Ideal full-TTD DDBS = **4.753**, Perfect CSI = 5.028 bit/s/Hz.
 | **`+ Kronecker`** | **4.768** | **4.763** | **4.760** | **4.761** | **4.728** | **4.601** |
 
 As a fraction of ideal: ~3-8% / ~10-16% / **97-100%**. The proposal holds
-near-ideal rate at **8x fewer TTDs and 12-bit resolution**.
+near-ideal rate at a **32-value delay profile and 12-bit resolution**, where both
+sharing arms have collapsed. Report the **12-bit** part as the contribution; the
+value-count part is secondary.
 
 ### Three cautions when reporting this
 1. **The `shared` row is non-monotonic in bits** (0.495, 0.478, 0.595, 0.753,
