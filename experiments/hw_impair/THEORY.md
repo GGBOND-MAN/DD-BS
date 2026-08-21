@@ -209,3 +209,41 @@ DDBS training waveform needs `log2(67) ~ 6` more bits. Prior studies concluded
 training waveform is the outlier — which is exactly why this bottleneck was
 missed. State the contrast explicitly: it distinguishes the contribution *and*
 explains the gap in the literature.
+
+## 10. Rate-domain ablation (measured) — `hw_probe_ablation_rate.m`
+
+All arms at a matched **32 TTDs** (`ojcoms`/`shared`: P=8 -> Nt/P; `kron`: P=16 ->
+Nt/P+P). Training and serving beams share one hardware model (same architecture,
+same absolute delay LSB). SNR 15 dB, K=3, single path.
+Ideal full-TTD DDBS = **4.753**, Perfect CSI = 5.028 bit/s/Hz.
+
+| arch | Inf | 14 | 13 | 12 | 11 | 10 bits |
+|---|---|---|---|---|---|---|
+| `ojcoms` form | 0.385 | 0.392 | 0.273 | 0.162 | 0.157 | 0.171 |
+| `+ hybrid TD-PS` | 0.495 | 0.478 | 0.595 | 0.753 | 0.646 | 0.622 |
+| **`+ Kronecker`** | **4.768** | **4.763** | **4.760** | **4.761** | **4.728** | **4.601** |
+
+As a fraction of ideal: ~3-8% / ~10-16% / **97-100%**. The proposal holds
+near-ideal rate at **8x fewer TTDs and 12-bit resolution**.
+
+### Three cautions when reporting this
+1. **The `shared` row is non-monotonic in bits** (0.495, 0.478, 0.595, 0.753,
+   0.646, 0.622). That is *not* "12-bit is best" — the arm is in a fully broken
+   regime where which spurious peak wins is essentially random, so 100-trial
+   Monte-Carlo noise dominates. Report it only as "~10-16% of ideal, i.e. broken";
+   never quote an ordering within the row.
+2. **Rate collapses harder than focusing gain** (gain 0.238 -> rate ~10%): gain is
+   an amplitude, power squares it (~-12 dB), and a mis-located argmax additionally
+   mis-points the serving beam. Expected, not a bug.
+3. **Kronecker's rate does not show its 3.5% focusing-gain loss** (0.941 vs 0.975).
+   Legitimate: training is an argmax, so a moderate gain loss still selects the
+   right grid point, and the rate is then set by the serving beam, whose 2.1 ns
+   delay range the Kronecker structure reproduces almost exactly.
+
+### An explanatory hypothesis (state as such, do not claim it)
+This result offers a reason why OJ-COMS needs ~12 pilots: plain sub-array sharing
+applied to the *original* DDBS parameters fails, so their scheme must recover it
+through parameter redesign, sector-shift and a larger pilot budget. The Kronecker
+structure instead keeps near-ideal rate at the original **3** pilots. Since their
+full scheme is not reproduced here, this must be offered as an explanation, never
+as "we beat them with fewer pilots".
