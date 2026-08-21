@@ -105,3 +105,51 @@ between 9 and 8 bits — both exactly where the simulation shows them.
 - Orthogonal to the OJ-COMS AoSA result, which reduces the TD *count* assuming
   ideal values: count x precision is a 2-D hardware-cost surface, and the two
   contributions compose.
+
+---
+
+## 7. Second axis: TD **count** — the Kronecker two-stage TTD
+
+### Why naive sub-array sharing is expensive for DDBS
+Sharing one TTD across `P` antennas leaves a residual `2*pi*(f_m-fc)*(tau_g - tau_n)`.
+The intra-group delay spread is `P*d*|theta_t|/c`, and `|theta_t| ~ 33` for DDBS,
+so even `P = 2` gives ~1.1 ns of spread — several radians at `B/2`. Measured
+focusing gain: `P = 2 -> 0.668`, `P = 4 -> 0.402`, `P = 8 -> 0.238`.
+
+### The structure that fixes it
+Split the antenna index exactly as `n = n_g + n_q` (`n_g` the sub-array offset,
+`n_q` the position within it). Then
+
+    tau_n = (n*d*theta_t - n^2*d^2*alpha_t)/c
+          = [A(n_g) + C(n_q)]  -  2*n_g*n_q*d^2*alpha_t/c ,
+
+i.e. the **linear term is exactly separable** and only the quadratic **cross term**
+resists. Since the DDBS delay is linear-dominated (140 ns vs 0.72 ns here — the
+same large `theta_t` that makes the hardware hard is what makes this factorization
+near-exact), a two-stage bank of
+
+    Nt/P coarse TTDs  +  P fine TTDs (reused by every sub-array)  =  Nt/P + P
+
+reproduces the delay profile. The count is minimised at `P = sqrt(Nt)`, giving
+**`2*sqrt(Nt)` TTDs** (32 instead of 256 at `Nt = 256`, an 8x reduction).
+
+### Design rule for P
+The residual is bounded by `d_tau <= Nt*P*d^2*|alpha_t| / (2*c)`, so the worst-case
+phase error is
+
+    **eps_max = pi * B * Nt * P * d^2 * |alpha_t| / (2*c)**
+
+— it grows **linearly in P**, while the TTD count falls as `Nt/P + P`. Choose
+`P = min( sqrt(Nt), 2*c*eps_budget/(pi*B*Nt*d^2*|alpha_t|) )`. At the paper's
+settings both terms land near `P = 16` (`eps_max = 1.4 rad`, gain 0.941).
+
+### Measured surface (ideal TD, hybrid PS; ideal full-TTD = 0.975)
+
+| #TTD | 128 | 64 | 32 |
+|---|---|---|---|
+| generic sharing | 0.668 | 0.402 | 0.238 |
+| **Kronecker** | **0.975** | **0.973** | **0.941** |
+
+~4x higher gain at equal TD count. And the two contributions **compose**:
+Kronecker at 32 TTDs still gives **0.938 at 12-bit** TD — ~8x fewer TTDs *and*
+~4 fewer bits each, versus 256 full-resolution (~14-bit) TTDs.
