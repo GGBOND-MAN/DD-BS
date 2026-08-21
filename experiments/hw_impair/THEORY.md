@@ -153,3 +153,59 @@ settings both terms land near `P = 16` (`eps_max = 1.4 rad`, gain 0.941).
 ~4x higher gain at equal TD count. And the two contributions **compose**:
 Kronecker at 32 TTDs still gives **0.938 at 12-bit** TD — ~8x fewer TTDs *and*
 ~4 fewer bits each, versus 256 full-resolution (~14-bit) TTDs.
+
+`P = 16 = sqrt(Nt)` is confirmed optimal: `P = 32` needs *more* TTDs (40) and
+drops to 0.853.
+
+## 8. The two contributions are orthogonal — a natural ablation
+
+The corrected sweep shows the `shared` arm is almost **bit-insensitive**
+(0.668 at infinite resolution, 0.657 at 11 bits). Once the PS carries the exact
+`2*pi*fc*tau_n`, *both* the sharing error and the quantization error scale with
+`(f_m - fc)`. So:
+
+* **Contribution A (hybrid TD-PS) is architecture-independent** — it repairs the
+  precision axis for `full`, `shared` and `kron` alike.
+* **Contribution B (Kronecker) repairs the count axis** — it is what makes 32
+  TTDs usable at all.
+
+| architecture | 32 TTD, 12-bit | axis repaired |
+|---|---|---|
+| AoSA form, unchanged DDBS parameters | 0.060 | none |
+| + hybrid TD-PS (A) | 0.237 | precision |
+| + Kronecker (B) | **0.938** | precision + count |
+
+`hw_probe_ablation_rate.m` reproduces this table in the rate domain.
+
+## 9. Positioning — two caveats that must survive into the paper
+
+**Do not claim to beat OJ-COMS.** The `ojcoms` arm applies their *architecture*
+(their eqs. (13)-(14): TTD on the sub-array-centre grid, plain per-antenna DDBS
+phase shifter that does **not** compensate the intra-group delay) to the
+**original** DDBS parameters. Their complete scheme additionally redesigns those
+parameters and adds sector-shift, distance interleaving and a larger pilot budget
+(~12 vs 3), under which they report near-baseline performance at half the TTD
+count. The defensible comparison is against the `shared` arm — their TTD sharing
+combined with contribution A, i.e. the strongest fair sharing baseline.
+
+**Prior art on the precision axis concluded the opposite — and that is the point.**
+P.-H. Chang and T.-D. Chiueh, "Hybrid beamforming for wideband terahertz massive
+MIMO communications with low-resolution phase shifters and true-time-delay,"
+*IEEE TWC*, 23(7):8000-8012, 2024 **does** quantize the TTD (its eq. (32), via a
+soft-quantization/QAT gradient method) and reports that "*the spectral efficiency
+reduction is quite limited*" as the delay interval coarsens.
+
+| | Chang & Chiueh 2024 | this work |
+|---|---|---|
+| task | hybrid **beamforming** (data precoding) | DDBS **beam training** |
+| channel | 3D geometric S-V, AoD/elevation — **far field** | **near field**, spherical, with range |
+| delay range | set by the array aperture, **~2 ns** | set by `theta_t ~ -33`, **~140 ns (67x)** |
+| TTD LSB studied | `1/(8*fc)` ~ 4.2 ps — already fine | swept to the failure point |
+| conclusion | coarse TTD is tolerable | coarse TTD is **catastrophic** |
+
+The two are consistent under the mechanism of §1-§4: at equal *absolute* LSB the
+DDBS training waveform needs `log2(67) ~ 6` more bits. Prior studies concluded
+"coarse TTD is fine" because their delay range is aperture-limited; the DDBS
+training waveform is the outlier — which is exactly why this bottleneck was
+missed. State the contrast explicitly: it distinguishes the contribution *and*
+explains the gap in the literature.

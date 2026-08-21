@@ -1,4 +1,4 @@
-function [w, n_ttd] = ddbs_beam_arch(Nt,B,fc,M,d,theta1,theta2,alpha1,alpha2,K,arch,P,Btd,Bps)
+function [w, n_ttd, lsb_used] = ddbs_beam_arch(Nt,B,fc,M,d,theta1,theta2,alpha1,alpha2,K,arch,P,Btd,Bps,lsb_sec)
 % DDBS_BEAM_ARCH  DDBS training beams under a chosen TD ARCHITECTURE x RESOLUTION.
 %
 % Spans the 2-D hardware cost surface: TD COUNT (arch,P) x TD PRECISION (Btd).
@@ -18,6 +18,10 @@ function [w, n_ttd] = ddbs_beam_arch(Nt,B,fc,M,d,theta1,theta2,alpha1,alpha2,K,a
 %            not reproduce -- so treat it as the architecture, not their result.
 %   'kron'   PROPOSED two-stage / Kronecker TTD        -> n_ttd = Nt/P + P
 %
+% A serving (data) beam focused at (sin_theta, alpha) is just this function with
+% theta1=sin_theta, alpha1=alpha, theta2=alpha2=0, K=1 -- so the same hardware
+% model covers both training and data beams.
+%
 % Kronecker rationale. With n = n_g + n_q (n_g the sub-array offset, n_q the
 % position inside it -- an exact split), the DDBS delay
 %       tau_n = (n*d*theta_t - n^2*d^2*alpha_t)/c
@@ -35,6 +39,7 @@ function [w, n_ttd] = ddbs_beam_arch(Nt,B,fc,M,d,theta1,theta2,alpha1,alpha2,K,a
 if nargin<12||isempty(P),   P   = 1;   end
 if nargin<13||isempty(Btd), Btd = Inf; end
 if nargin<14||isempty(Bps), Bps = Inf; end
+if nargin<15, lsb_sec = []; end   % explicit hardware LSB [s]; overrides Btd
 
 c = 3e8;
 f  = fc + B/M*((1:M)-1-(M-1)/2);
@@ -64,10 +69,19 @@ for s = 1:K
             error('arch must be full|shared|ojcoms|kron');
     end
 
-    if isfinite(Btd)                                   % quantise the TD values
-        lo = min(tau); R = max(tau)-min(tau); lsb = R/2^Btd;
-        tg = lo + round((tg-lo)/lsb)*lsb;
+    % Quantise the TD values. lsb_sec (an absolute hardware LSB, in seconds) takes
+    % precedence over Btd, which is defined relative to THIS beam's delay range --
+    % use lsb_sec whenever training and serving beams must share one hardware.
+    lo = min(tau); R = max(tau)-min(tau);
+    if ~isempty(lsb_sec) && isfinite(lsb_sec) && lsb_sec > 0
+        lsb = lsb_sec;
+    elseif isfinite(Btd)
+        lsb = R/2^Btd;
+    else
+        lsb = 0;
     end
+    if lsb > 0, tg = lo + round((tg-lo)/lsb)*lsb; end
+    lsb_used = lsb;
 
     % PS carries the exact per-antenna fc term + the DDBS phase-shift parameters
     if strcmp(arch,'ojcoms')
