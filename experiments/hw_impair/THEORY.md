@@ -352,3 +352,71 @@ percent (a 12-bit point read 4.362, above its own infinite-resolution 4.132). At
 `N_iter = 500` the spread tightens to ~3% and that artefact is gone, but a mild
 wiggle remains (15 bits reads 4.277 vs 4.192 at infinite resolution). The arm is
 flat within noise — do not read an ordering into those wiggles.
+
+---
+
+## 12. PRIOR-ART FINDING — the TD-PS carrier-term split is **not** new
+
+A targeted literature check settles the open question flagged earlier. **The
+decomposition is already explicit in the foundational delay-phase precoding
+paper**, which the DDBS baseline itself cites as [31]:
+
+> L. Dai, J. Tan, Z. Chen, H. V. Poor, "Delay-Phase Precoding for Wideband THz
+> Massive MIMO," *IEEE TWC* 21(9):7271-7286, 2022 (arXiv:2102.05211), Sec. IV-A:
+>
+> "To solve this problem, **we divide the phase shift** `-pi*beta_{l,m} =
+> -pi*(xi_m - 1)*P*theta_l` **into two parts** `-pi*xi_m*P*theta_l` **and**
+> `pi*P*theta_l`**. The first part is frequency-dependent and can be realized by
+> TTDs** with `s_l = P*theta_l/2`. **Then, the second part** `pi*P*theta_l` **is
+> frequency-independent, which can be realized through PSs by adding an extra
+> phase shift.**"
+
+Their eq. (30) duly modifies the PS values by `exp(j*pi*(k-1)*P*theta_l)`. Since a
+delay `s_l*T_c` contributes `-pi*xi_m*P*theta_l = -pi*P*theta_l - pi*P*theta_l*(f_m-fc)/fc`,
+that extra PS term **cancels exactly the carrier-frequency component of the TTD
+phase** — structurally the same mechanism proposed here.
+
+**So "the reparameterization" must be cited, not claimed.**
+
+### What still stands
+Their *motivation* was different — realizability, not resolution: `s_l` in their
+eq. (28) depends on `xi_m`, and "*this makes (28) hard to realize for all M
+subcarriers, since s_l must be fixed due to the hardware constraint of TTDs*."
+They never analyse TTD resolution. Neither does the DDBS baseline, which does
+**not** apply the cancellation: `delay_polar_2d` puts the full `k_m*(n*d*theta_t -
+n^2*d^2*alpha_t)` in the TTD and a separate `k_c`-scaled term in the PS. OJ-COMS
+inherits that parameterization.
+
+Surviving, and sufficient for an analysis-type paper:
+
+1. **An unreported failure mode.** DDBS beam training as published needs ~15-bit
+   TTD and collapses to ~2% of ideal rate at 12 bits.
+2. **A closed-form root cause.** `R = 1.76*gamma*fL*M/(2*fM*B) ~ 0.71*(M/B)`,
+   independent of `Nt`, derived from the baseline's own eqs. (29)-(30).
+3. **A closed-form resolution requirement** and the `log2(2*f_H/B)` relation,
+   cross-validated (predicted 3.70 bits, measured 4).
+4. **The specific observation** that DDBS omits the carrier-term cancellation of
+   [31] — from the same group — and that the omission costs ~4 bits of TTD
+   resolution.
+5. **A bonus:** the same cancellation attenuates the AoSA *sharing* error too
+   (+53% at infinite resolution), making sub-array TTD sharing more viable.
+6. **The Chang & Chiueh contrast** explaining why prior quantization studies
+   concluded coarse TTD was tolerable.
+
+### Honest reframing
+The paper is an **analysis-and-application** contribution, not a new architecture:
+*"DDBS beam training carries a delay range ~67x larger than a focusing beam, which
+makes it uniquely fragile to TTD resolution; applying the known delay-phase
+carrier-term cancellation removes ~4 bits of that requirement, and we give the
+closed-form requirement and validate it."* That is a legitimate Q3-level paper,
+but the "novel hybrid TD-PS architecture" framing must be dropped.
+
+### Remaining risk to check (paywalled — user to obtain)
+**Nguyen & Kim et al., "Hybrid Delay-Phase Precoding in Wideband UM-MIMO Systems
+Under True Time Delay and Phase Shifter Hardware Limitations," IEEE TWC 2023,
+DOI 10.1109/TWC.2023.3338814** (Xplore doc 10354007) — indexed as addressing
+"constraints on TTD range/resolution and PS quantization". If it already derives a
+TTD-resolution requirement, item 3 above weakens too. Not accessible here.
+Related but checked and *not* a hit: Nguyen & Kim, arXiv:2212.07484 — uses 4/8-bit
+quantized TTD/PS in simulation but targets bounded delay *range* and joint
+optimization, with no resolution-requirement analysis.
