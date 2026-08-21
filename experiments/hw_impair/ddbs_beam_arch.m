@@ -10,6 +10,12 @@ function [w, n_ttd] = ddbs_beam_arch(Nt,B,fc,M,d,theta1,theta2,alpha1,alpha2,K,a
 %             at fc). This is a GENERIC shared-TTD model -- it is NOT a
 %             reproduction of the OJ-COMS AoSA scheme, which additionally
 %             redesigns the training procedure.
+%   'ojcoms' literal OJ-COMS AoSA form (their eqs (13)-(14)): TTD carries the
+%            full 2*pi*f_m*tau on the sub-array-centre grid; the PS is the plain
+%            per-antenna DDBS term and does NOT compensate the intra-group delay.
+%            Note their full scheme ALSO redesigns the DDBS parameters and adds
+%            sector-shift / distance-interleaving / extra pilots, which this does
+%            not reproduce -- so treat it as the architecture, not their result.
 %   'kron'   PROPOSED two-stage / Kronecker TTD        -> n_ttd = Nt/P + P
 %
 % Kronecker rationale. With n = n_g + n_q (n_g the sub-array offset, n_q the
@@ -44,16 +50,18 @@ for s = 1:K
     switch arch
         case 'full'
             tg = tau;                    n_ttd = Nt;
-        case 'shared'
+        case {'shared','ojcoms'}
+            % one TTD per sub-array, evaluated at the sub-array centre
             tg = repelem(mean(reshape(tau,P,G),1).',P);   n_ttd = G;
         case 'kron'
             idx = (0:Nt-1).';  g = floor(idx/P);  q = mod(idx,P);
             ng  = (g-(G-1)/2)*P;         nq = q-(P-1)/2;   % n = ng+nq exactly
             A   = (ng*d*tt_s - (ng*d).^2*alpha1)/c;        % G coarse values
             C   = (nq*d*tt_s - (nq*d).^2*alpha1)/c;        % P fine values
-            tg  = A + C;                 n_ttd = G + P;
+            tg  = A + C;
+            if P==1, n_ttd = Nt; else, n_ttd = G + P; end
         otherwise
-            error('arch must be full|shared|kron');
+            error('arch must be full|shared|ojcoms|kron');
     end
 
     if isfinite(Btd)                                   % quantise the TD values
@@ -62,14 +70,26 @@ for s = 1:K
     end
 
     % PS carries the exact per-antenna fc term + the DDBS phase-shift parameters
-    ps = mod(kc*(nn*d*theta2 - (nn*d).^2*alpha2) + 2*pi*fc*tau, 2*pi);
-    if arch=="shared"   % PS also compensates the intra-group delay difference
-        ps = mod(ps + 2*pi*fc*(tau-tg), 2*pi);
-    end
-    if isfinite(Bps), lsbp = 2*pi/2^Bps; ps = round(ps/lsbp)*lsbp; end
-
-    for m = 1:M
-        w(:,s,m) = exp(-1j*(2*pi*(f(m)-fc)*tg + ps))/sqrt(Nt);
+    if strcmp(arch,'ojcoms')
+        % Literal OJ-COMS AoSA form (their eqs (13)-(14)): the TTD carries the
+        % FULL 2*pi*f_m*tau_g on the sub-array-centre grid, and the PS is the
+        % standard per-antenna DDBS phase term with its own design parameters --
+        % it does NOT compensate the intra-group delay difference.
+        ps = mod(kc*(nn*d*theta2 - (nn*d).^2*alpha2), 2*pi);
+        if isfinite(Bps), lsbp = 2*pi/2^Bps; ps = round(ps/lsbp)*lsbp; end
+        for m = 1:M
+            w(:,s,m) = exp(-1j*(2*pi*f(m)*tg + ps))/sqrt(Nt);
+        end
+    else
+        % Hybrid split: the PS carries the EXACT per-antenna frequency-independent
+        % term 2*pi*fc*tau_n, so the residual error is 2*pi*(f_m-fc)*(tg - tau_n)
+        % -- for 'shared' this already gives the PS full per-antenna resolution at
+        % fc (the strongest fair sharing baseline; do NOT add another fc term).
+        ps = mod(kc*(nn*d*theta2 - (nn*d).^2*alpha2) + 2*pi*fc*tau, 2*pi);
+        if isfinite(Bps), lsbp = 2*pi/2^Bps; ps = round(ps/lsbp)*lsbp; end
+        for m = 1:M
+            w(:,s,m) = exp(-1j*(2*pi*(f(m)-fc)*tg + ps))/sqrt(Nt);
+        end
     end
 end
 end
