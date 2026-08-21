@@ -301,9 +301,30 @@ arm's *own* infinite-resolution rate: their split needs **15 bits** (14 already
 fails at 2.511 vs a 2.594 threshold), the reparameterized version is still within
 5% at the sweep floor of **10 bits** — a saving of **>= 5 bits** on an identical
 AoSA array. This is the composition claim, and it needs no reproduction of their
-scheme. *Open item:* 10 bits is the sweep floor, not our arm's cliff — the sweep
-now extends to 7 bits so the headline can quote an exact saving rather than a
-bound.
+scheme.
+
+**Exact figure (extended sweep to 7 bits).** With the sweep extended, our arm's
+own cliff is found and the saving becomes exact:
+
+| architecture | Inf | 15 | 14 | 13 | 12 | 11 | 10 | 9 | 8 | 7 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| their split | 2.664 | 2.647 | **2.302** | 1.333 | 0.077 | 0.094 | 0.093 | 0.098 | 0.086 | 0.082 |
+| + reparam. | 4.185 | 4.329 | 4.191 | 4.285 | 4.299 | **4.072** | 3.921 | 2.787 | 1.158 | 1.010 |
+
+Minimum resolution within 5% of the same arm's infinite-resolution rate:
+**15 bits** for their split, **11 bits** with the reparameterization —
+
+    saving = 4 bits,   analytic prediction = log2(2*f_H/B) = log2(13) = 3.70 bits.
+
+An independent cross-check of the theory against simulation: the predicted 3.70
+rounds to the measured 4. The cliff locations shift consistently too — theirs
+between 13 and 12 bits, ours between 10 and 9.
+
+**Precision of that integer.** The 10/11-bit boundary sits inside the Monte-Carlo
+noise: at `N_iter = 100` the 10-bit point reads 3.921 and fails the 5% band
+(giving 11), while at `N_iter = 500` it read 4.035 and passes (giving 10). Quote
+the result as **~4 bits (4-5)**, consistent with the analytic 3.70, and re-run the
+full extended sweep at `N_iter = 500` for the published figure.
 
 **(b) It is not only about quantization.** At *infinite* resolution the
 reparameterization already wins, 2.730 -> **4.192 (+54%)**. There is no
