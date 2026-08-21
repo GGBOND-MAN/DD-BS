@@ -113,14 +113,16 @@
 <header>
   <div class="eyebrow">Research Dossier · Baseline: Zheng et al. TWC 2025</div>
   <h1>低硬件成本的 DDBS 近场波束训练</h1>
-  <p class="lede">以 distance-dependent beam split 为 baseline，经四轮 fail-fast 排雷否定两个方向后，锁定并验证了一条成立的改进路线：DDBS 对时延精度的非对称脆弱性，及修复它的两个正交贡献。全部结论均有解析式与端到端仿真双重支撑。</p>
+  <p class="lede">以 distance-dependent beam split 为 baseline，经四轮 fail-fast 排雷否定两个方向后，锁定并验证了一条成立的改进路线：<b>DDBS 对时延精度的非对称脆弱性</b>，及修复它的重参数化设计。结论有解析式与端到端仿真双重支撑，且与已有工作正交可叠加。</p>
   <div class="kpis">
-    <div class="kpi"><div class="v">2</div><div class="k">正交贡献<br>精度轴 + 数量轴</div></div>
-    <div class="kpi"><div class="v">8×</div><div class="k">TTD 数量缩减<br>256 → 32</div></div>
+    <div class="kpi"><div class="v">6%</div><div class="k">发现的失效模式<br>12-bit TTD 下的速率</div></div>
     <div class="kpi"><div class="v">~4.5</div><div class="k">TTD 比特节省<br>≈20× 精度放宽</div></div>
-    <div class="kpi"><div class="v">100%</div><div class="k">理想速率保持<br>32 TTD × 12-bit</div></div>
+    <div class="kpi"><div class="v">f<sub>c</sub>→B</div><div class="k">精度需求尺度<br>闭式 log₂(2f<sub>H</sub>/B)</div></div>
+    <div class="kpi"><div class="v">正交</div><div class="k">可叠加于<br>AoSA 架构</div></div>
   </div>
 </header>
+
+<div class="red" style="margin-top:24px"><b>勘误（2026-08）：</b>Kronecker 结构曾被声称把 <b>TTD 元件数</b>从 N<sub>t</sub> 降到 N<sub>t</sub>/P+P（"8×"）。<b>该声明已撤回</b> —— N<sub>t</sub>/P+P 是<b>不同延迟取值</b>的个数，不是物理元件数：AoSA 共享在<b>扇出前</b>施加延迟故真能共用硬件，而 Kronecker 的细延迟项必须逐天线实现，元件数反为 N<sub>t</sub>/P+N<sub>t</sub>。所有实测数值不变，变的是它们所对应的<b>成本轴标注</b>。本页已按此修正；论文应以<b>精度轴</b>为主贡献。</div>
 
 <!-- 路线 -->
 <section>
@@ -174,10 +176,10 @@
   </div>
 
   <div class="card">
-    <h3 style="font-size:15px;margin-bottom:7px"><span class="chip acc">贡献 B</span>&nbsp; Kronecker 两级 TTD — 修数量轴</h3>
+    <h3 style="font-size:15px;margin-bottom:7px"><span class="chip warn">次要观察</span>&nbsp; Kronecker 分解 — 减少<b>延迟取值种类</b></h3>
     <p style="font-size:13.5px;color:var(--ink2)">天线索引可<b>精确</b>拆分 n = n<sub>g</sub> + n<sub>q</sub>，于是</p>
     <div class="eq">τ<sub>n</sub> = [ A(n<sub>g</sub>) + C(n<sub>q</sub>) ] − <b>2·n<sub>g</sub>·n<sub>q</sub>·d²·α<sub>t</sub>/c</b> （仅二次交叉项残留）</div>
-    <p style="font-size:13.5px;color:var(--ink2)">线性项<b>精确可分离</b>，而 DDBS 延迟正是线性主导（140 ns vs 二次项 0.72 ns）。故用 N<sub>t</sub>/P 个粗 TTD + P 个细 TTD（跨子阵复用），共 <span class="m">N<sub>t</sub>/P + P</span>，在 <span class="m">P = √N<sub>t</sub></span> 最小化 → <b>2√N<sub>t</sub> = 32 个</b>。</p>
+    <p style="font-size:13.5px;color:var(--ink2)">线性项<b>精确可分离</b>，而 DDBS 延迟正是线性主导（140 ns vs 二次项 0.72 ns）。故延迟剖面只需 <span class="m">N<sub>t</sub>/P + P</span> 种<b>不同取值</b>（在 <span class="m">P=√N<sub>t</sub></span> 最小化 → 32 种）。<b>但这不是元件数缩减</b>（见页首勘误）—— 实际收益仅限于固定延迟线组的制造与校准，应作为<b>次要观察</b>呈现。</p>
     <div class="note" style="margin-top:9px"><b>最漂亮的一点：</b>让 DDBS 硬件上难做的那个巨大 θ<sub>t</sub>，恰恰是让这个分解几乎精确的原因。</div>
   </div>
 </section>
@@ -217,8 +219,8 @@
     </div>
 
     <div class="fig">
-      <h3>消融：32 TTD 等成本、12-bit</h3>
-      <p class="cap">占理想速率的比例。两个贡献逐级叠加。</p>
+      <h3>消融：32 种延迟取值、12-bit</h3>
+      <p class="cap">占理想速率的比例。载荷结论是<b>精度</b>那一级。</p>
       <svg viewBox="0 0 520 250" role="img" aria-label="Ablation at 32 TTDs and 12-bit: the AoSA form reaches 3 percent of ideal rate, adding the hybrid split reaches 16 percent, adding Kronecker reaches 100 percent">
         <line class="gl" x1="150" y1="30" x2="150" y2="200"/>
         <line class="gl" x1="240" y1="30" x2="240" y2="200"/>
@@ -250,7 +252,7 @@
   <div class="sh"><span class="n">05</span><h2>定位与红线</h2><span class="r"></span></div>
   <div class="card">
     <h3 style="font-size:15px;margin-bottom:8px">vs OJ-COMS 2026（Qaid, Nasir, Al-Ahmadi, Y. Liu）</h3>
-    <p style="font-size:14px;color:var(--ink2)">他们减 TD <b>数量</b>（AoSA 共享，假设理想值）；你减 TD <b>精度需求</b>。<b>两轴正交、可叠加。</b></p>
+    <p style="font-size:14px;color:var(--ink2)">他们减 TD <b>数量</b>（AoSA 共享，<b>假设延迟值理想</b>）；你补上他们<b>假设掉的精度维度</b>。两者正交 —— 正确姿态是<b>叠加</b>而非竞争：<span class="m">hw_probe_composition.m</span> 在他们的工作点（P=2，128 TTD）上验证"同架构下省约 4 比特"。</p>
     <div class="red"><b>红线：不可声称"打败 OJ-COMS"。</b>档案中的 <span class="m">ojcoms</span> 臂是"他们的架构 + <b>原始</b> DDBS 参数"，而他们的完整方案还包含参数重设计、sector-shift、距离交错与 ~12 发导频。可主张的对标是 <span class="m">shared</span> 臂（他们的共享 + 你的贡献 A）。</div>
   </div>
   <div class="card">
@@ -303,7 +305,9 @@
   <div class="sh"><span class="n">08</span><h2>剩余工作</h2><span class="r"></span></div>
   <div class="card">
     <ul style="margin:0">
-      <li><b>写作</b> — 将 THEORY.md 扩为 Section III/IV：引理 1（量化→增益）、命题 1（延迟范围闭式）、定理 1（比特节省）、命题 2（Kronecker 可分性与 P 准则）。</li>
+      <li><b>跑 composition 实验</b> — 在 AoSA 工作点验证"省 4 比特"，这是支撑投稿的核心图。</li>
+      <li><b>核实贡献 A 的先验性</b> — "PS 管 f<sub>c</sub> 相位、TTD 管色散"是 delay-phase precoding 的基本思想；需确认该<b>分解本身</b>是否已被明确写过。若已有，贡献降级为"已知技巧的新应用 + 定量分析"，仍可发但须如实定位。</li>
+      <li><b>写作</b> — 将 THEORY.md 扩为 Section III/IV：引理 1（量化→增益）、命题 1（延迟范围闭式）、定理 1（比特节省）。</li>
       <li><b>补全损伤矩阵</b> — 抖动 / 相噪 / 插损在 Kronecker 架构下的鲁棒性（目前仅覆盖量化）。</li>
       <li><b>多用户与多径</b> — 作为鲁棒性附加维度，而非主线。</li>
     </ul>
