@@ -150,6 +150,42 @@ settings both terms land near `P = 16` (`eps_max = 1.4 rad`, gain 0.941).
 | generic sharing | 0.668 | 0.402 | 0.238 |
 | **Kronecker** | **0.975** | **0.973** | **0.941** |
 
-~4x higher gain at equal TD count. And the two contributions **compose**:
-Kronecker at 32 TTDs still gives **0.938 at 12-bit** TD — ~8x fewer TTDs *and*
-~4 fewer bits each, versus 256 full-resolution (~14-bit) TTDs.
+~4x higher gain at equal TD count. `P = 16 = sqrt(Nt)` is confirmed optimal:
+`P = 32` needs *more* TTDs (40) and drops to 0.853.
+
+## 8. The two contributions are orthogonal — a natural ablation
+
+The corrected sweep shows the `shared` arm is almost **bit-insensitive**
+(0.668 at infinite resolution, 0.657 at 11 bits). Once the PS carries the exact
+`2*pi*fc*tau_n`, *both* the sharing error and the quantization error scale with
+`(f_m - fc)`. So:
+
+* **Contribution A (hybrid TD-PS) is architecture-independent** — it repairs the
+  precision axis for `full`, `shared` and `kron` alike.
+* **Contribution B (Kronecker) repairs the count axis** — it is what makes 32
+  TTDs usable at all.
+
+| architecture | 32 TTD, 12-bit | axis repaired |
+|---|---|---|
+| AoSA form, unchanged DDBS parameters | 0.060 | none |
+| + hybrid TD-PS (A) | 0.237 | precision |
+| + Kronecker (B) | **0.938** | precision + count |
+
+### Caveat that must survive into the paper
+The `ojcoms` arm applies the OJ-COMS *architecture* to the **original** DDBS
+parameters. Their complete scheme additionally redesigns those parameters and
+adds sector-shift, distance interleaving and a larger pilot budget (~12 vs 3),
+under which they report near-baseline performance at half the TTD count. So this
+arm is **not** a reproduction of their result and must never be presented as
+"we beat OJ-COMS". The defensible comparison is against the `shared` arm — their
+TTD sharing combined with contribution A, i.e. the strongest fair sharing
+baseline.
+
+### Adjacent prior art to position against
+OJ-COMS cites P.-H. Chang and T.-D. Chiueh, "Hybrid beamforming for wideband
+terahertz massive MIMO communications with low-resolution phase shifters and
+true-time-delay," *IEEE TWC*, 23(7):8000-8012, 2024 — the closest work on the
+precision axis. It targets low-resolution **phase shifters** for wideband
+**beamforming**; the finding here concerns low-resolution **TTD** for DDBS
+**beam training**, where the large intercept `theta_t` inflates the delay range
+to ~140 ns. Read it and state the distinction explicitly.
