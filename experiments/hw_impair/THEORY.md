@@ -355,68 +355,77 @@ flat within noise — do not read an ordering into those wiggles.
 
 ---
 
-## 12. PRIOR-ART FINDING — the TD-PS carrier-term split is **not** new
+## 13. PRIOR-ART FINDING #2 — the resolution fix is also prior art, but a bigger DDBS-specific gap opens
 
-A targeted literature check settles the open question flagged earlier. **The
-decomposition is already explicit in the foundational delay-phase precoding
-paper**, which the DDBS baseline itself cites as [31]:
+The paywalled paper has been obtained and read:
 
-> L. Dai, J. Tan, Z. Chen, H. V. Poor, "Delay-Phase Precoding for Wideband THz
-> Massive MIMO," *IEEE TWC* 21(9):7271-7286, 2022 (arXiv:2102.05211), Sec. IV-A:
->
-> "To solve this problem, **we divide the phase shift** `-pi*beta_{l,m} =
-> -pi*(xi_m - 1)*P*theta_l` **into two parts** `-pi*xi_m*P*theta_l` **and**
-> `pi*P*theta_l`**. The first part is frequency-dependent and can be realized by
-> TTDs** with `s_l = P*theta_l/2`. **Then, the second part** `pi*P*theta_l` **is
-> frequency-independent, which can be realized through PSs by adding an extra
-> phase shift.**"
+> A. Najjar, M. El-Absi, T. Kaiser, "Hybrid Delay-Phase Precoding in Wideband
+> UM-MIMO Systems Under True Time Delay and Phase Shifter Hardware Limitations,"
+> *IEEE TWC* 23(7):7246-..., 2024.
 
-Their eq. (30) duly modifies the PS values by `exp(j*pi*(k-1)*P*theta_l)`. Since a
-delay `s_l*T_c` contributes `-pi*xi_m*P*theta_l = -pi*P*theta_l - pi*P*theta_l*(f_m-fc)/fc`,
-that extra PS term **cancels exactly the carrier-frequency component of the TTD
-phase** — structurally the same mechanism proposed here.
+Its **Sec. V-B, "True Time Delay Resolution Constraint"**, analyses exactly the
+error "*that occurs due to the adoption of finite-resolution TTDs ... from rounding
+the required time delay value to an integer multiple of the time delay resolution
+`t_res`*", introduces an auxiliary variable via `phi_k^n = 2*pi*rho_k^n*tau_k^n`,
+minimises the squared phase error over all subcarriers, and obtains
 
-**So "the reparameterization" must be cited, not claimed.**
+> "As a result of (37), **`rho_k^n = fc`**, and, accordingly, the corresponding
+> **equalization phase is `phi_k^n = 2*pi*fc*tau_k^n`**. The equalization phase
+> `phi_k^n` is added to the corresponding subarray..."
 
-### What still stands
-Their *motivation* was different — realizability, not resolution: `s_l` in their
-eq. (28) depends on `xi_m`, and "*this makes (28) hard to realize for all M
-subcarriers, since s_l must be fixed due to the hardware constraint of TTDs*."
-They never analyse TTD resolution. Neither does the DDBS baseline, which does
-**not** apply the cancellation: `delay_polar_2d` puts the full `k_m*(n*d*theta_t -
-n^2*d^2*alpha_t)` in the TTD and a separate `k_c`-scaled term in the PS. OJ-COMS
-inherits that parameterization.
+That is the proposed mechanism, derived for the proposed motivation (finite TTD
+resolution), by a least-squares argument that is cleaner than the heuristic used
+here. **Contribution A is therefore comprehensively prior art**: the split itself
+in Dai/Tan TWC 2022, and its use against quantization error in Najjar et al. 2024.
+It must be cited and cannot be claimed in any form.
 
-Surviving, and sufficient for an analysis-type paper:
+### But the same reading exposes a larger, unreported, DDBS-specific problem
 
-1. **An unreported failure mode.** DDBS beam training as published needs ~15-bit
-   TTD and collapses to ~2% of ideal rate at 12 bits.
-2. **A closed-form root cause.** `R = 1.76*gamma*fL*M/(2*fM*B) ~ 0.71*(M/B)`,
-   independent of `Nt`, derived from the baseline's own eqs. (29)-(30).
-3. **A closed-form resolution requirement** and the `log2(2*f_H/B)` relation,
-   cross-validated (predicted 3.70 bits, measured 4).
-4. **The specific observation** that DDBS omits the carrier-term cancellation of
-   [31] — from the same group — and that the omission costs ~4 bits of TTD
-   resolution.
-5. **A bonus:** the same cancellation attenuates the AoSA *sharing* error too
-   (+53% at infinite resolution), making sub-array TTD sharing more viable.
-6. **The Chang & Chiueh contrast** explaining why prior quantization studies
-   concluded coarse TTD was tolerable.
+Delay *ranges* actually realizable, as surveyed by that paper and by Dai/Tan:
 
-### Honest reframing
-The paper is an **analysis-and-application** contribution, not a new architecture:
-*"DDBS beam training carries a delay range ~67x larger than a focusing beam, which
-makes it uniquely fragile to TTD resolution; applying the known delay-phase
-carrier-term cancellation removes ~4 bits of that requirement, and we give the
-closed-form requirement and validate it."* That is a legitimate Q3-level paper,
-but the "novel hybrid TD-PS architecture" framing must be dropped.
+| source | max delay range |
+|---|---|
+| THz SiGe/mHEMT TTD circuits [28],[30],[31] of Najjar et al. | **1.47 - 6.64 ps** |
+| mmWave TTDs cited by Dai/Tan | **400 - 508 ps** |
+| Najjar et al. simulation settings | `t_max` = 10 / 28 / 340 ps |
+| aperture-limited near-field focusing beam (Nt=256, fc=30 GHz) | ~4.25 ns |
+| **DDBS training waveform (this work)** | **140 ns** |
 
-### Remaining risk to check (paywalled — user to obtain)
-**Nguyen & Kim et al., "Hybrid Delay-Phase Precoding in Wideband UM-MIMO Systems
-Under True Time Delay and Phase Shifter Hardware Limitations," IEEE TWC 2023,
-DOI 10.1109/TWC.2023.3338814** (Xplore doc 10354007) — indexed as addressing
-"constraints on TTD range/resolution and PS quantization". If it already derives a
-TTD-resolution requirement, item 3 above weakens too. Not accessible here.
-Related but checked and *not* a hit: Nguyen & Kim, arXiv:2212.07484 — uses 4/8-bit
-quantized TTD/PS in simulation but targets bounded delay *range* and joint
-optimization, with no resolution-requirement analysis.
+DDBS needs **~280x the best realizable device** and **~33x even the
+aperture-limited focusing delay** — about **21 m of transmission line per
+antenna**, for 256 antennas. **The baseline never states this number.** It says
+only that "*only K (usually a small number such as 2,3) time delay values need to
+be realized*" and proposes fixed microstrip lines or waveguides, without computing
+their required length.
+
+And per Sec. 3 the range is `R = 1.76*gamma*fL*M/(2*fM*B) ~ 0.71*(M/B)`,
+**independent of `Nt`** — so unlike every other delay requirement in the
+literature, it does **not** shrink with a smaller array.
+
+### The tradeoff this opens (verified numerically)
+
+The range is set by the angular sweep rate (baseline eqs. (28)-(30)). Reducing the
+sweep rate by `S` (so each pilot lays down fewer strips and ~`S` times more pilots
+are needed for the same coverage) scales the intercept and hence the range:
+
+| sweep reduction `S` | pilots | `theta_t` | delay range | vs a 508 ps device |
+|---|---|---|---|---|
+| 1 (baseline) | 3 | -32.95 | **140.6 ns** | 277x over |
+| 2 | ~6 | -15.98 | 68.2 ns | 134x |
+| 5 | ~15 | -5.79 | 24.7 ns | 49x |
+| 10 | ~30 | -2.40 | 10.2 ns | 20x |
+| 20 | ~60 | -0.70 | **3.0 ns** | ~6x |
+
+`R ∝ 1/S`, flooring at the aperture-limited ~4 ns once `theta_t -> 0`.
+
+**So DDBS's headline "3 pilots" is paid for in TTD delay range, at a rate nobody
+has quantified.** That is a genuinely open, DDBS-specific, and consequential
+contribution — and it is *orthogonal* to the resolution question that turned out
+to be prior art:
+
+1. DDBS's required delay range is 140 ns, never stated in the baseline;
+2. it scales as `0.71*M/B`, **independent of `Nt`** — a qualitatively different law
+   from every aperture-limited delay requirement in the DPP literature;
+3. it exceeds realizable TTD hardware by 2-3 orders of magnitude;
+4. it trades against pilot overhead as `R ∝ 1/S`, with a floor at the aperture
+   limit — giving designers the first realizable operating point for DDBS.
