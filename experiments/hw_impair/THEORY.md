@@ -352,3 +352,80 @@ percent (a 12-bit point read 4.362, above its own infinite-resolution 4.132). At
 `N_iter = 500` the spread tightens to ~3% and that artefact is gone, but a mild
 wiggle remains (15 bits reads 4.277 vs 4.192 at infinite resolution). The arm is
 flat within noise — do not read an ordering into those wiggles.
+
+---
+
+## 13. PRIOR-ART FINDING #2 — the resolution fix is also prior art, but a bigger DDBS-specific gap opens
+
+The paywalled paper has been obtained and read:
+
+> A. Najjar, M. El-Absi, T. Kaiser, "Hybrid Delay-Phase Precoding in Wideband
+> UM-MIMO Systems Under True Time Delay and Phase Shifter Hardware Limitations,"
+> *IEEE TWC* 23(7):7246-..., 2024.
+
+Its **Sec. V-B, "True Time Delay Resolution Constraint"**, analyses exactly the
+error "*that occurs due to the adoption of finite-resolution TTDs ... from rounding
+the required time delay value to an integer multiple of the time delay resolution
+`t_res`*", introduces an auxiliary variable via `phi_k^n = 2*pi*rho_k^n*tau_k^n`,
+minimises the squared phase error over all subcarriers, and obtains
+
+> "As a result of (37), **`rho_k^n = fc`**, and, accordingly, the corresponding
+> **equalization phase is `phi_k^n = 2*pi*fc*tau_k^n`**. The equalization phase
+> `phi_k^n` is added to the corresponding subarray..."
+
+That is the proposed mechanism, derived for the proposed motivation (finite TTD
+resolution), by a least-squares argument that is cleaner than the heuristic used
+here. **Contribution A is therefore comprehensively prior art**: the split itself
+in Dai/Tan TWC 2022, and its use against quantization error in Najjar et al. 2024.
+It must be cited and cannot be claimed in any form.
+
+### But the same reading exposes a larger, unreported, DDBS-specific problem
+
+Delay *ranges* actually realizable, as surveyed by that paper and by Dai/Tan:
+
+| source | max delay range |
+|---|---|
+| THz SiGe/mHEMT TTD circuits [28],[30],[31] of Najjar et al. | **1.47 - 6.64 ps** |
+| mmWave TTDs cited by Dai/Tan | **400 - 508 ps** |
+| Najjar et al. simulation settings | `t_max` = 10 / 28 / 340 ps |
+| aperture-limited near-field focusing beam (Nt=256, fc=30 GHz) | ~4.25 ns |
+| **DDBS training waveform (this work)** | **140 ns** |
+
+DDBS needs **~280x the best realizable device** and **~33x even the
+aperture-limited focusing delay** — about **21 m of transmission line per
+antenna**, for 256 antennas. **The baseline never states this number.** It says
+only that "*only K (usually a small number such as 2,3) time delay values need to
+be realized*" and proposes fixed microstrip lines or waveguides, without computing
+their required length.
+
+And per Sec. 3 the range is `R = 1.76*gamma*fL*M/(2*fM*B) ~ 0.71*(M/B)`,
+**independent of `Nt`** — so unlike every other delay requirement in the
+literature, it does **not** shrink with a smaller array.
+
+### The tradeoff this opens (verified numerically)
+
+The range is set by the angular sweep rate (baseline eqs. (28)-(30)). Reducing the
+sweep rate by `S` (so each pilot lays down fewer strips and ~`S` times more pilots
+are needed for the same coverage) scales the intercept and hence the range:
+
+| sweep reduction `S` | pilots | `theta_t` | delay range | vs a 508 ps device |
+|---|---|---|---|---|
+| 1 (baseline) | 3 | -32.95 | **140.6 ns** | 277x over |
+| 2 | ~6 | -15.98 | 68.2 ns | 134x |
+| 5 | ~15 | -5.79 | 24.7 ns | 49x |
+| 10 | ~30 | -2.40 | 10.2 ns | 20x |
+| 20 | ~60 | -0.70 | **3.0 ns** | ~6x |
+
+`R ∝ 1/S`, flooring at the aperture-limited ~4 ns once `theta_t -> 0`.
+
+**So DDBS's headline "3 pilots" is paid for in TTD delay range, at a rate nobody
+has quantified.** That is a genuinely open, DDBS-specific, and consequential
+contribution — and it is *orthogonal* to the resolution question that turned out
+to be prior art:
+
+1. DDBS's required delay range is 140 ns, never stated in the baseline;
+2. it scales as `0.71*M/B`, **independent of `Nt`** — a qualitatively different law
+   from every aperture-limited delay requirement in the DPP literature;
+3. it exceeds realizable TTD hardware by 2-3 orders of magnitude;
+4. it trades against pilot overhead as `R ∝ 1/S`, with a floor at the aperture
+   limit — giving designers the first realizable operating point for DDBS.
