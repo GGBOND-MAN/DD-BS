@@ -23,11 +23,16 @@
 % performance. The claim is strictly the DELTA BETWEEN THE TWO ARMS at a fixed
 % architecture -- which is exactly the contribution.
 %
-% Expected from the focusing-gain surface at P=2:
-%   B_td   :   Inf     14      13      12      11      10
-%   ojcoms :  0.478  0.431   0.301   0.055   0.040   0.054   <- collapses at ~12
-%   +A     :  0.668  0.668   0.667   0.665   0.657   0.624   <- flat to ~10
-% i.e. the same performance is held with ~4 fewer bits.
+% MEASURED (N_iter=500, ideal full-TTD = 4.754 bit/s/Hz):
+%   B_td   :   Inf     15      14      13      12      11      10
+%   theirs :  2.730  2.616   2.511   1.276   0.096   0.099   0.106
+%   + ours :  4.192  4.277   4.238   4.164   4.173   4.199   4.035
+% Their split needs 15 bits to stay within 5% of its own ideal (14 already fails);
+% ours is still within 5% at 10 bits -> >= 5 bits saved. And at INFINITE
+% resolution it already wins 2.730 -> 4.192 (+54%, 57% -> 88% of ideal), because
+% the reparameterization also attenuates the SHARING error -- see THEORY.md 11.
+% The sweep now extends to 7 bits to locate our arm's own cliff and turn the
+% ">= 5 bits" headline into an exact figure.
 % ========================================================================
 clear; clc;
 
@@ -55,7 +60,7 @@ r_ideal = mean(cellfun(@(h) run1(h,w_id,'full',1,[],Nt,B,fc,f,M,d,focus_loc,SNR_
 fprintf('Nt=%d, P=%d (%d shared TTDs), SNR=%d dB, K=%d\n', Nt, P, Nt/P, SNR_dB, K);
 fprintf('ideal full-TTD DDBS = %.3f bit/s/Hz\n\n', r_ideal);
 
-Btd_list = [Inf 15 14 13 12 11 10];
+Btd_list = [Inf 15 14 13 12 11 10 9 8 7];   % extended: locate OUR arm's own cliff
 fprintf('%-26s |','architecture'); fprintf('%8s', string(Btd_list)); fprintf('   <- B_td\n');
 res = zeros(2,numel(Btd_list));
 labs = {'AoSA form (their split)','AoSA + reparam. (ours)'};

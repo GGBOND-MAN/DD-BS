@@ -283,24 +283,30 @@ as "we beat them with fewer pilots".
 
 ## 11. The reparameterization generalizes: it attenuates **any** delay error
 
-The composition run (`hw_probe_composition.m`, P=2, 128 shared TTDs, ideal
-full-TTD = 4.759) gave:
+The composition run (`hw_probe_composition.m`, P=2, 128 shared TTDs,
+**N_iter = 500**, ideal full-TTD = 4.754) gave:
 
 | architecture | Inf | 15 | 14 | 13 | 12 | 11 | 10 bits |
 |---|---|---|---|---|---|---|---|
-| AoSA form (their split) | 2.664 | 2.647 | 2.302 | 1.333 | 0.077 | 0.094 | 0.093 |
-| **AoSA + reparameterization** | **4.132** | 4.120 | 4.121 | 4.164 | 4.362 | 4.060 | 4.159 |
+| AoSA form (their split) | 2.730 | 2.616 | 2.511 | 1.276 | 0.096 | 0.099 | 0.106 |
+| **AoSA + reparameterization** | **4.192** | 4.277 | 4.238 | 4.164 | 4.173 | 4.199 | 4.035 |
+
+As a fraction of ideal: their split runs 57% -> 2%; ours 88% -> 85%. At 12 bits
+the two differ by **43x**.
 
 Two things follow.
 
 **(a) The precision claim, on a fixed architecture.** Staying within 5% of each
 arm's *own* infinite-resolution rate: their split needs **15 bits** (14 already
-fails at 2.302), the reparameterized version is still within 5% at the sweep floor
-of **10 bits** — a saving of **>= 5 bits** on an identical AoSA array. This is the
-composition claim, and it needs no reproduction of their scheme.
+fails at 2.511 vs a 2.594 threshold), the reparameterized version is still within
+5% at the sweep floor of **10 bits** — a saving of **>= 5 bits** on an identical
+AoSA array. This is the composition claim, and it needs no reproduction of their
+scheme. *Open item:* 10 bits is the sweep floor, not our arm's cliff — the sweep
+now extends to 7 bits so the headline can quote an exact saving rather than a
+bound.
 
 **(b) It is not only about quantization.** At *infinite* resolution the
-reparameterization already wins, 2.664 -> **4.132 (+55%)**. There is no
+reparameterization already wins, 2.730 -> **4.192 (+54%)**. There is no
 quantization error there, so the gain must come from elsewhere — and it does. The
 error model of §1-§2 never referred to quantization specifically:
 
@@ -316,11 +322,12 @@ general statement than "it fixes quantization", and the one the paper should mak
 > the phase shifter attenuates the beam-degradation caused by *any* delay error —
 > quantization, sub-array sharing, or fabrication — by the factor `2*f_H/B`.
 
-**Residual gap.** The reparameterized arm reaches 4.13 of the ideal 4.759 (87%);
+**Residual gap.** The reparameterized arm reaches 4.19 of the ideal 4.754 (88%);
 the remaining 13% is the sharing error that survives the `B/2` scaling. Honest to
 state: the reparameterization *attenuates* the sharing error, it does not remove it.
 
-**Monte-Carlo caution.** With `N_iter = 100` the flat arm fluctuates by a few
-percent (the 12-bit point reads 4.362, above its own infinite-resolution 4.132).
-The arm is flat within noise; use `N_iter >= 500` for the published figure and do
-not read an ordering into those wiggles.
+**Monte-Carlo caution.** At `N_iter = 100` the flat arm fluctuated by several
+percent (a 12-bit point read 4.362, above its own infinite-resolution 4.132). At
+`N_iter = 500` the spread tightens to ~3% and that artefact is gone, but a mild
+wiggle remains (15 bits reads 4.277 vs 4.192 at infinite resolution). The arm is
+flat within noise — do not read an ordering into those wiggles.
