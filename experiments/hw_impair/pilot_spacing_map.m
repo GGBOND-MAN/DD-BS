@@ -95,10 +95,8 @@ for s = 1:K
 end
 fl = actual_focus(w,focus_loc,Nt,fc,B,M,d,K);
 r  = mean(cellfun(@(h) rate_ongrid(h,w,fl,Nt,B,fc,M,d,SNR_t,SNR_dB,Q,K), CH));
-sn = sort(reshape(fl(:,1,:),[],1));
-cov = (min(max(sn),0.866) - max(min(sn),-0.866))/1.732;
-inner = sn(sn>=-0.866 & sn<=0.866);
-out = [r, max(cov,0), max(diff(inner))/(2/Nt)];
+[gp, cov] = cov_gap(fl, Nt);      % boundary-aware -- see cov_gap.m
+out = [r, cov, gp];
 end
 
 function r = rate_ongrid(h,w,focus_loc,Nt,B,fc,M,d,SNR_t,SNR_dB,Q,K)

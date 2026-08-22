@@ -53,15 +53,11 @@ for P = [1 2 4 8 16]
     if P==1, BW_pred = B; end
 
     % (M2) coverage of the SURVIVING subcarriers
-    sn = [];
-    for t=1:K, sn = [sn; fl(keep,1,t)]; end %#ok<AGROW>
-    sn = sort(sn(:)); sn = sn(abs(sn)<=0.9);
-    span = (max(sn)-min(sn))/1.732;
-    inner = sn(sn>=-0.866 & sn<=0.866);
-    maxgap = max(diff(inner));
+    [maxgap_bw, span] = cov_gap(fl(keep,1,:), Nt);   % boundary-aware, surviving
+    maxgap = maxgap_bw*(2/Nt);                       % subcarriers only
 
     fprintf('%4d %4d %8.1f | %6.2fGHz %6.2fGHz | %7.2f %8.4f %8.1f\n', ...
-            P,K,P*abs(TH1), BW_meas/1e9, min(BW_pred,B)/1e9, span, maxgap, maxgap/(2/Nt));
+            P,K,P*abs(TH1), BW_meas/1e9, min(BW_pred,B)/1e9, span, maxgap, maxgap_bw);
   end
 end
 fprintf(['\nRead: BW_meas vs BW_pred tests (M1). maxgap/(2/Nt) is the largest\n' ...
