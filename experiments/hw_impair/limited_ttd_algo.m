@@ -40,8 +40,7 @@
 % ========================================================================
 clear; clc;
 
-BASELINE_DIR = fullfile('..','..','baseline_code','code_nf_distance_dependent_rainbow');
-addpath(genpath(BASELINE_DIR));
+ensure_baseline();          % locate the baseline code wherever it lives
 addpath(genpath(fileparts(mfilename('fullpath'))));
 
 Nt=256; fc=30e9; B=5e9; M=1024; c=3e8; d=(c/fc)/2; Q=1; K=3;
