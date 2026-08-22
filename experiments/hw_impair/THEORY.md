@@ -720,3 +720,91 @@ biggest hole and where they end up instead.
   answer to research question 2 that costs no overhead;
 - spread uniformly (`|k - round(k)| ~ 0.25`) → the map is smoothly warped, the
   structural route closes, and claims 1-6 stand as the paper.
+
+---
+
+## 17. MEASURED — displacement is NOT the failure mode, and the law splits into two constraints
+
+`map_focus_shift.m`. The decisive comparison is between the two P=8 rows, one of
+which passes and one of which fails:
+
+| P | K | rate | stayed put | `|k|>2` | mean `|dev|` | maxgap/BW |
+|---|---|---|---|---|---|---|
+| 1 | 3 | ideal | 98.3% | 0.0% | 0.036 | 0.6 |
+| 4 | 3 | 74% | 28.5% | 31.7% | 0.578 | 20.2 |
+| 8 | 3 | **42%** | 14.1% | 61.1% | 0.617 | **50.1** |
+| 8 | 6 | 89% | 10.0% | 72.2% | 0.709 | 10.1 |
+| 8 | 9 | **100%** | 15.7% | 56.7% | 0.578 | **0.3** |
+
+### 17.1 The finding
+
+**The passing configuration is scrambled just as violently as the failing one.**
+At P=8, K=9 — which delivers 100% of ideal — only 15.7% of foci stay put, 56.7%
+move by more than two grating steps, and the mean displacement is 0.578 in
+`sin(theta)`, all statistically indistinguishable from the K=3 case that delivers
+42%. The only column that separates them is the gap: **0.3 vs 50.1 beamwidths**.
+
+So "sharing displaces the beams" is **not** the failure mode. With the
+recalibrated lookup, displacement is *harmless because it is known* — the beam may
+point anywhere as long as the table says where. What fails is **tiling**.
+
+This retro-validates §12's recalibration result and explains it: the baseline's
+decision rule assumes designed focus locations, and under sharing 85% of them are
+wrong by more than a grating step. That is why simple recalibration beats a full
+match filter — the information was never lost, only mislabeled.
+
+### 17.2 Grating-lobe selection — not confirmed, and moot
+
+`|k - round(k)|` (0 = on a lobe, 0.25 = no structure): 0.093 at P=4, but 0.156 /
+0.243 / 0.185 at P=8 — partial structure at P=4, essentially none at P=8. And
+`|k| = 1` is ~0% everywhere while `|k| >= 2` dominates, which is the opposite of
+what adjacent-lobe selection predicts. Weakly supported at best. **More
+importantly it is moot**: the statistic is the same for passing and failing
+configurations, so whatever produces the displacement is not the discriminator.
+Hypothesis retired; the sub-array-disambiguation route (a pilot-free fix) closes
+with it.
+
+### 17.3 What this buys — the law now DECOMPOSES
+
+The frontier `K_min = 1.12 P` was fitted. It is now the intersection of two
+independent constraints:
+
+    (C1) COVERAGE   K * s  >=  K0 = 3
+         DD-BS's OWN constraint, not new: the sweep per pilot is proportional to
+         theta_p ~ s, so total designed coverage is K*s and must be preserved.
+
+    (C2) SHARING    P * |theta_t0| * s  <=  Theta ~ 85
+         The new one: above this the displaced foci stop tiling and holes open.
+
+Eliminating `s`:
+
+    K_min = K0 * P * |theta_t0| / Theta = 3 * P * 31.73 / 85 = 1.12 * P
+
+— the measured frontier, now **derived from two constraints** rather than fitted,
+with only `Theta` left empirical. And `Theta` never has to be known in closed
+form: the maxgap test of §16 computes the C2 boundary offline for any
+`(Nt, P, theta_t)`.
+
+This also explains, in retrospect, why the earlier probes behaved as they did:
+
+| probe | what it did | why it gave what it gave |
+|---|---|---|
+| `redesign_for_shared` | walked the diagonal `K*s = K0` | C1 held by construction; it measured C2 alone |
+| `decouple_theta` | broke the tie in the `theta` direction at K=3 | C1 violated → 46% ceiling, no matter what C2 did |
+| `frontier_ttd_pilot` | swept P along the diagonal | traced the C1∩C2 corner, i.e. `K_min` |
+
+### 17.4 The falsifiable test — `kspace_map.m`
+
+Scan K and `s` as an **independent 2-D grid** at P=8. The pass region must be
+exactly the intersection of the two half-planes. Two single-constraint corners
+decide it:
+
+| point | C1 | C2 | prediction |
+|---|---|---|---|
+| K=9, s=1 | ok (9≥3) | **violated** (253.8 > 85) | FAIL |
+| K=3, s=1/3 | **violated** (1 < 3) | ok (84.6 ≤ 85) | FAIL |
+| K=9, s=1/3 | ok | ok | PASS |
+
+**Both single-constraint corners must fail.** If either passes, that constraint is
+not real and the decomposition is wrong. The resulting (K, s) heat map with the
+two boundary curves drawn over it is the paper's key figure.
