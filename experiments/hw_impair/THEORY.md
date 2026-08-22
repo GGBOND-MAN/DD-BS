@@ -808,3 +808,100 @@ decide it:
 **Both single-constraint corners must fail.** If either passes, that constraint is
 not real and the decomposition is wrong. The resulting (K, s) heat map with the
 two boundary curves drawn over it is the paper's key figure.
+
+---
+
+## 18. REFUTED — `P*|theta_t| <= 85` was `K` in disguise. The law depends on `P` alone.
+
+`kspace_map.m`, P=8 (32 TTDs), K and `s` scanned independently. Rate as % of ideal:
+
+| K \ s | 1.00 | 0.50 | 0.333 | 0.250 | maxgap/BW |
+|---|---|---|---|---|---|
+| 3 | 43% | 46% | 39% | 42% | ~50 |
+| 6 | 72% | 87% | 86% | 80% | ~9-10 |
+| 9 | **100%** | **102%** | 100% | 96% | 0.3-0.6 |
+| 12 | 101% | 101% | 99% | 100% | 0.3-0.6 |
+
+### 18.1 Both constraints of §17 are dead
+
+- **C2 (`P*|theta_t| <= 85`) is REFUTED.** `K=9, s=1` has `P*|theta_t| = 253.8`,
+  three times over the supposed limit, and delivers **100%** (maxgap 0.6).
+  `K=12, s=1` likewise, at 101%.
+- **C1 (`K*s >= K0`) is REFUTED.** `K=9, s=0.25` has `K*s = 2.25` and passes at
+  96%; meanwhile `K=3, s=1` satisfies C1 exactly and fails at 43%.
+
+**Rows are flat, columns are everything.** `s` — and therefore `theta_t` — is at
+most a second-order effect (its one visible contribution is +15 points in the
+transition row, K=6: 72% → 87% as `s` goes 1 → 0.5).
+
+**How the false invariant arose.** `redesign_for_shared` only ever walked the
+diagonal `s = K0/K`, where `theta_t = theta_t0 * K0/K` is a *function of K*. So
+"`P*|theta_t| = 84.6` at the frontier" and "`K = 9` at the frontier" were the same
+statement, and I read the wrong one as causal. §15 and §17's decomposition are
+withdrawn. **The lesson is methodological and belongs in the paper's own design:
+never fit an invariant on a locus where the candidate variables are tied.**
+
+### 18.2 What survives, and it is simpler than what died
+
+    K_min depends on P alone:  P = 2, 4, 8, 16  ->  K_min = 3, 5, 9, 18
+    independent of s (this table), of theta_t (same), and of B (frontier PART 2)
+
+Equivalently **`K * N_TTD ~ 1.12 * Nt`**, the headline exchange law — unchanged in
+value, but now known to be a statement about *pilots vs sharing factor*, with the
+sweep design playing no part.
+
+**This makes the practical recipe cleaner, not weaker**, because the two knobs
+separate completely:
+
+1. TTD budget fixes `P`; pay `K = ceil(1.12 P)` pilots. **Unavoidable.**
+2. *Given* that K, set `s = K0/K`. Rate is flat along the row, so this is **free**,
+   and it shrinks the delay range 4x (134.8 → 33.7 ns) — §13's unrealizability
+   problem, solved at no cost rather than paid for in pilots.
+
+§14's headline ("32 TTDs at 100% of ideal for K=12") stands; only its *causal
+story* changes — the pilots buy sharing tolerance, and the range reduction is a
+bonus that rides along, not the thing being bought.
+
+### 18.3 The maxgap criterion is now 25/25
+
+Across §16's 9 configurations and these 16, `maxgap <= 1 beamwidth` ⇔ pass, with
+**no counterexample in either direction** — including the cases that refuted every
+mechanism hypothesis. It has outlived four theories. It is the paper's centerpiece.
+
+### 18.4 The mechanism that fits ALL of it — a pilot comb vs the sub-array beam
+
+The baseline places its pilots by stepping the TTD intercept,
+`theta_t,s = theta_t - 2(s-1)/K`, so the pilots form a **comb of spacing
+`Delta = 2/K` spanning ~2**. Sharing groups P antennas, whose sub-array pattern has
+beamwidth **`~2/P`**. A hole opened by sharing gets filled only if some pilot lands
+inside it, i.e. only if the comb is finer than the sub-array beam:
+
+    (R1) RESOLUTION   Delta <= 2/P      ->  with Delta = 2/K:   K >= P
+    (R2) SPAN         K * Delta >= 2    ->  the strips must still tile
+
+Neither expression contains `B`, `theta_t` or `s` — which is precisely why `K_min`
+was measured to be independent of all three. Together they give `K >= P` against a
+measured `1.12 P`. **This is the first hypothesis that explains the null results
+as well as the positive one**, which is why it is worth one more test.
+
+### 18.5 The test — `pilot_spacing_map.m`
+
+The baseline hard-wires `Delta = 2/K`. The script generates the pilots one at a
+time so **K and `Delta` scan independently**, and the pass region must be the
+corner `{Delta <= 2/P}` ∩ `{K*Delta >= 2}`:
+
+| K | `Delta` | span | resolution | prediction |
+|---|---|---|---|---|
+| 4 | 0.50 | ok | **too coarse** | FAIL |
+| 4 | 0.25 | **too narrow** | ok | FAIL |
+| **8** | **0.25** | ok | ok | **PASS** — the `K = P` corner |
+| 16 | 0.125 | ok | ok | PASS |
+| 16 | 0.50 | ok | **too coarse** | FAIL |
+
+**If `K=8, Delta=0.25` passes while `K=16, Delta=0.5` fails, pilot COUNT is not
+the variable — pilot RESOLUTION is.** The design fix then becomes *place the
+pilots better* rather than *use more of them*, which is strictly cheaper and
+would be a second algorithm-side contribution alongside the recalibrated lookup.
+If instead only K matters and `Delta` does nothing, the comb model joins the other
+four and `K_min ~ 1.12 P` stands as a purely empirical law — still publishable,
+with the maxgap criterion as its operational form.
