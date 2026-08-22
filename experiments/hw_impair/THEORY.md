@@ -519,3 +519,102 @@ claim** and none of the surveyed work states it:
 - the exchange rate `K * N_TTD = const * Nt` with `const ∝ B/fc`;
 - the resulting joint reduction of **TTD count and TTD delay range** — the latter
   being the §13 unrealizability problem, which the same knob attacks.
+
+---
+
+## 15. MEASURED + FALSIFIED — the frontier is `K_min = ceil(1.12 P)`, and it does **not** scale with `B`
+
+`frontier_ttd_pilot.m`, same setup as §14, N_iter=30, pass = 95% of that
+configuration's own full-TTD ideal.
+
+### PART 1 — the frontier, at finer K resolution
+
+| P | N_TTD | K_min | K/P | `theta_t` | range | `P*|theta_t|` |
+|---|---|---|---|---|---|---|
+| 2 | 128 | 3 (floor) | 1.50 | 31.73 | 134.8 ns | 63.5 |
+| 4 | 64 | 5 | 1.25 | 19.04 | 80.9 ns | 76.1 |
+| 8 | 32 | 9 | 1.12 | 10.58 | 44.9 ns | 84.6 |
+| 16 | **16** | 18 | 1.12 | 5.29 | 22.5 ns | 84.6 |
+
+Failing points bracket each: P=4,K=3 → 74%; P=8,K=3 → 42%, K=6 → 89%;
+P=16,K=6 → 58%, K=12 → 80%. P=2's `K_min` is limited by the `K >= K0 = 3` floor,
+not by sharing.
+
+**`K/P` is not constant — `P*|theta_t|` is.** The invariant is
+
+    P * |theta_t|  <=  Theta ~ 85          (dimensionless)
+
+and since the redesign sets `|theta_t| = |theta_t0| K0 / K`, this is
+
+    K_min = ceil( P * |theta_t0| * K0 / Theta ) = ceil(1.12 * P)
+
+which reproduces **all four** measured points exactly (P=2→3 at the floor, 4→5,
+8→9, 16→18). §14's `K ~ 1.5P` was a coarse-ladder artifact; supersede it.
+
+### PART 2 — the `B/fc` prediction is FALSIFIED
+
+At P=8, sweeping B with each point judged against its own full-TTD ideal:
+
+| B | ideal rate | K=3 | K=6 | K=9 | K_min | predicted K/P |
+|---|---|---|---|---|---|---|
+| 2.5 GHz | 3.834 | 42% | 93% | 98% | 9 | 0.75 |
+| 5 GHz | 4.742 | 43% | 86% | 100% | 9 | 1.50 |
+| 10 GHz | 4.449 | 37% | 94% | 106% | 9 | 3.00 |
+
+`K_min = 9` at every bandwidth — a 4x change in B moves it not at all, against a
+predicted 4x change. **§14's derivation is wrong.** The worst-case residual phase
+`pi B P d |theta_t| / c` cannot be the binding constraint, because it is
+proportional to B. (Sanity check on its magnitude: at the P=8 frontier it equals
+11 rad at B=5 GHz and 22 rad at B=10 GHz — both far past any sensible `phi_max`,
+yet both pass. The bound is simply not what is being enforced.)
+
+### Replacement mechanism — coverage truncation, in which both `fc` and `B` cancel
+
+1. The intra-group residual `2*pi*(f_m-fc)*(tau_g-tau_n)` is **linear in the
+   intra-group index**, because the DDBS delay is linear-dominated. A linear phase
+   across a sub-array is a **tilt**, not a loss: each sub-array pattern is steered
+   off by `d(sin theta) = -(f_m - fc) theta_t / f_m`.
+2. The tilt leaves the sub-array beamwidth (`~2/P`) once
+   `|f_m - fc| > eta * c/(P d |theta_t|) = eta * 2 fc /(P |theta_t|)`, so only that
+   slice of the band still forms a usable beam (`eta ~ 0.443` at 3 dB).
+3. DDBS sweeps at `d(theta_m)/df ~ -theta_p/fc`, so the **usable angular coverage
+   per pilot** is
+
+       2 * (theta_p/fc) * eta * 2 fc /(P |theta_t|)  =  4 eta theta_p / (P |theta_t|)
+
+   — `fc` cancels, and **`B` never enters**. That is exactly the measurement.
+4. Covering `Theta_req` with K pilots therefore needs
+
+       K  >=  Theta_req * P * |theta_t| / (4 eta |theta_p|)                     (*)
+
+   With `Theta_req = 2 sin 60 = 1.732`, `|theta_t0| = 31.73`, `eta = 0.443` and
+   `|theta_p,eff|` between 30 (`theta_2`) and 36.78 (`theta_p + 2 p_M`):
+   `K_min = (0.84 .. 1.04) P` against the measured **1.12 P** — a 8-25% match from
+   a first-principles argument with no fitted quantity.
+
+`diag_shared_mechanism.m` tests steps 2-3 directly (measured usable bandwidth vs
+`2 fc/(P|theta_t|)`, and the largest coverage hole among surviving subcarriers).
+
+### The consequence — `theta_t` and `theta_p` enter (*) as a RATIO
+
+§14 scaled them **together**, so sharing robustness had to be bought with pilots.
+But they do different jobs:
+
+| parameter | role | wants to be |
+|---|---|---|
+| `theta_p` | sweep rate — strips laid per pilot | **large** (few pilots) |
+| `theta_t` | (i) DC offset re-centring the sweep, `~ -theta_p` | **small** (sharing) |
+| | (ii) per-pilot increments `2(s-1)/K`, spanning only ~2 | already small |
+
+Only role (i) is large, and by (*) only role (i) causes the failure. Its own
+sharing budget is `P * 2 = 16` at P=8 — a factor of 5 inside `Theta ~ 85`.
+
+**So the `K_min = 1.12 P` tradeoff is a property of how DDBS re-centres its sweep,
+not of TTD sharing itself.** If the sweep can be re-centred without a large TTD
+ramp, `K = 3` and 32 TTDs become simultaneously achievable — the tradeoff
+disappears rather than being traded along. `decouple_theta.m` scans `theta_t` and
+`theta_p` independently to test this, reporting realized coverage next to rate so
+that a beam which merely walked off the user region cannot register as a win.
+
+That is the concrete form of research question 3: **not a new array, but a new way
+to place the DDBS sweep** — and it is reached from measurement, not assumption.

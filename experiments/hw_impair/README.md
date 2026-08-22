@@ -169,3 +169,33 @@ Fills the frontier in finely (adds P=16) and **tests** the predicted scaling:
 at P=8, `K_min` should be 6 / 12 / 24 for B = 2.5 / 5 / 10 GHz. Run it and send
 the two tables; if the B-scaling holds, the law is a design rule rather than a
 fitted constant.
+
+---
+
+## FRONTIER RESULT — `K_min = ceil(1.12 P)`, independent of bandwidth (`frontier_ttd_pilot.m`)
+
+| P | N_TTD | K_min | `P*|theta_t|` |
+|---|---|---|---|
+| 2 | 128 | 3 (K>=3 floor) | 63.5 |
+| 4 | 64 | 5 | 76.1 |
+| 8 | 32 | 9 | 84.6 |
+| 16 | **16** | 18 | 84.6 |
+
+The invariant is `P*|theta_t| <= ~85`, giving `K_min = ceil(1.12 P)` — which
+reproduces every measured point. **`K ~ 1.5P` in §14 was a coarse-ladder artifact.**
+
+**The `B/fc` prediction was falsified**: at P=8, `K_min = 9` for B = 2.5 / 5 / 10 GHz
+alike (predicted 6 / 12 / 24). The replacement mechanism is coverage truncation by
+the tilted sub-array factor, in which both `fc` and `B` cancel; it predicts
+`K_min = (0.84..1.04) P` from first principles vs the measured 1.12 P. Full
+derivation in `THEORY.md` §15.
+
+**Consequence:** `theta_t` and `theta_p` enter the design equation as a *ratio*, and
+only `theta_t`'s DC re-centring role is large. So the pilot/TTD tradeoff is a
+property of how DDBS places its sweep — potentially removable, not just tradeable.
+
+### Next
+| file | question |
+|---|---|
+| `decouple_theta.m` | Scale `theta_t`, `theta_p` independently at P=8, K=3. Does a small-`theta_t` / large-`theta_p` point reach ~100% of ideal **with full coverage**? If yes the tradeoff is broken. |
+| `diag_shared_mechanism.m` | Measures usable bandwidth and coverage holes directly — confirms or refutes the truncation mechanism. |
