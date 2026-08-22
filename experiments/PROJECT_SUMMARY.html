@@ -112,212 +112,272 @@
 
 <header>
   <div class="eyebrow">Research Dossier · Baseline: Zheng et al. TWC 2025</div>
-  <h1>低硬件成本的 DDBS 近场波束训练</h1>
-  <p class="lede">以 distance-dependent beam split 为 baseline，经四轮 fail-fast 排雷否定两个方向后，锁定并验证了一条成立的改进路线：<b>DDBS 对时延精度的非对称脆弱性</b>，及修复它的重参数化设计。结论有解析式与端到端仿真双重支撑，且与已有工作正交可叠加。</p>
+  <h1>共享 TTD 下的 DDBS 近场波束训练</h1>
+  <p class="lede">DD-BS 用 3 个导频完成近场角度–距离联合波束训练，代价是<b>每根天线一个真时延器</b>。
+  本项目回答：把 TTD 数量砍到 1/8，原架构还能用吗；不能用的话，最低要付什么代价。
+  答案已经收敛成一条单变量曲线。</p>
+
   <div class="kpis">
-    <div class="kpi"><div class="v">6%</div><div class="k">发现的失效模式<br>12-bit TTD 下的速率</div></div>
-    <div class="kpi"><div class="v">~4.5</div><div class="k">TTD 比特节省<br>≈20× 精度放宽</div></div>
-    <div class="kpi"><div class="v">f<sub>c</sub>→B</div><div class="k">精度需求尺度<br>闭式 log₂(2f<sub>H</sub>/B)</div></div>
-    <div class="kpi"><div class="v">正交</div><div class="k">可叠加于<br>AoSA 架构</div></div>
+    <div class="kpi"><div class="v">42%</div><div class="k">32 个 TTD、原参数下的速率（占理想）</div></div>
+    <div class="kpi"><div class="v">100%</div><div class="k">同样 32 个 TTD，导频梳子修正后</div></div>
+    <div class="kpi"><div class="v">K·N<sub>TTD</sub>≈N<sub>t</sub></div><div class="k">导频数 × TTD 数 的交换律</div></div>
+    <div class="kpi"><div class="v">20/20</div><div class="k">离线几何判据的预测命中</div></div>
   </div>
 </header>
 
-<div class="red" style="margin-top:24px"><b>勘误（2026-08）：</b>Kronecker 结构曾被声称把 <b>TTD 元件数</b>从 N<sub>t</sub> 降到 N<sub>t</sub>/P+P（"8×"）。<b>该声明已撤回</b> —— N<sub>t</sub>/P+P 是<b>不同延迟取值</b>的个数，不是物理元件数：AoSA 共享在<b>扇出前</b>施加延迟故真能共用硬件，而 Kronecker 的细延迟项必须逐天线实现，元件数反为 N<sub>t</sub>/P+N<sub>t</sub>。所有实测数值不变，变的是它们所对应的<b>成本轴标注</b>。本页已按此修正；论文应以<b>精度轴</b>为主贡献。</div>
-
-<!-- 路线 -->
 <section>
-  <div class="sh"><span class="n">01</span><h2>决策路径</h2><span class="r"></span></div>
+  <div class="sh"><span class="n">01</span><h2>一句话结论</h2><span class="r"></span></div>
+  <div class="card">
+    <p>共享 TTD 会把 DDBS 的波束焦点打散，<b>但打散本身无害</b>——只要离线知道它们被打到哪（重标定查找表）。
+    真正失效的是<b>平铺</b>：焦点集合在覆盖区域里裂出空洞。</p>
+    <p>能不能补上空洞，只取决于一个量：<b>导频梳子齿距 Δ 与子阵波束宽度 2/P 之比</b>。
+    导频<b>数量</b>不是变量，导频<b>分辨率</b>才是。</p>
+    <div class="eq">R1（分辨率）&nbsp; <b>Δ ≤ 2/P</b> &nbsp;&nbsp;&nbsp; R2（跨度）&nbsp; <b>K·Δ ≥ 2</b><br>
+    baseline 把 Δ 焊死为 2/K &nbsp;⟹&nbsp; <b>K ≥ P</b> &nbsp;⟺&nbsp; <b>K · N<sub>TTD</sub> ≈ N<sub>t</sub></b></div>
+    <p style="margin-top:10px">这条交换律是<b>推出来的</b>，不是拟合的；而且实测对带宽 B、对扫描参数 θ<sub>t</sub>/θ<sub>p</sub> 全部不敏感。</p>
+  </div>
+</section>
+
+<section>
+  <div class="sh"><span class="n">02</span><h2>主曲线：K 从描述里消失了</h2><span class="r"></span></div>
+  <div class="fig">
+    <h3>速率 vs 齿距/子阵波束宽 &nbsp;<span style="font-weight:400;color:var(--ink3)">（仅取满足 R2 的配置）</span></h3>
+    <p class="cap">P=8（32 个 TTD），Nt=256，SNR=15 dB。K = 4…16、三种齿距的全部配置都落在同一条曲线上。</p>
+    <svg viewBox="0 0 620 300" role="img" aria-label="速率随齿距与子阵波束宽之比变化的曲线">
+      <line class="gl" x1="58" y1="61"  x2="600" y2="61"/>
+      <line class="gl" x1="58" y1="124" x2="600" y2="124"/>
+      <line class="gl" x1="58" y1="187" x2="600" y2="187"/>
+      <line class="gl" x1="58" y1="250" x2="600" y2="250"/>
+      <text class="al" x="50" y="64"  text-anchor="end">100%</text>
+      <text class="al" x="50" y="127" text-anchor="end">80%</text>
+      <text class="al" x="50" y="190" text-anchor="end">60%</text>
+      <text class="al" x="50" y="253" text-anchor="end">40%</text>
+      <text class="al" x="90"  y="266" text-anchor="middle">0.5</text>
+      <text class="al" x="249" y="266" text-anchor="middle">1.0</text>
+      <text class="al" x="409" y="266" text-anchor="middle">1.5</text>
+      <text class="al" x="568" y="266" text-anchor="middle">2.0</text>
+      <text class="al" x="329" y="285" text-anchor="middle">Δ · P / 2   （齿距 / 子阵波束宽）</text>
+
+      <rect x="294" y="30" width="61" height="220" fill="var(--warn-bg)"/>
+      <text class="lbl" x="324" y="43" text-anchor="middle" fill="var(--warn)">拐点</text>
+      <line x1="249" y1="30" x2="249" y2="250" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 4"/>
+      <text class="lbl" x="243" y="243" text-anchor="end" fill="var(--accent2)">R1 边界 Δ=2/P</text>
+
+      <path class="ln" stroke="var(--accent)" d="M 90 54 L 144 58 L 249 57 L 294 68 L 355 146 L 568 198"/>
+      <g fill="var(--ink)">
+        <circle cx="90" cy="55" r="4"/><circle cx="90" cy="52" r="4"/>
+        <circle cx="144" cy="58" r="4"/>
+        <circle cx="249" cy="61" r="4"/><circle cx="249" cy="58" r="4"/>
+        <circle cx="249" cy="55" r="4"/><circle cx="249" cy="52" r="4"/>
+        <circle cx="294" cy="68" r="4"/>
+        <circle cx="355" cy="146" r="4"/>
+        <circle cx="568" cy="212" r="4"/><circle cx="568" cy="203" r="4"/><circle cx="568" cy="200" r="4"/>
+        <circle cx="568" cy="193" r="4"/><circle cx="568" cy="190" r="4"/>
+      </g>
+      <text class="lbl" x="355" y="163" text-anchor="middle" fill="var(--ink2)">K=6 → 73%</text>
+      <text class="lbl" x="294" y="84"  text-anchor="middle" fill="var(--ink2)">K=7 → 98%</text>
+      <text class="lbl" x="568" y="230" text-anchor="middle" fill="var(--ink2)">K=4,6,8,12,16</text>
+      <text class="lbl" x="568" y="244" text-anchor="middle" fill="var(--ink2)">全都 52–59%</text>
+    </svg>
+  </div>
+  <div class="note"><b>最右侧那一簇是全表最重要的数据点。</b>在 Δ·P/2 = 2 处，K 从 4 变到 16——<b>导频数量翻两番</b>——速率纹丝不动，全在 52–59%。
+  而 K=8 配上正确齿距是 100%，K=16 配上错误齿距只有 58%。<b>导频数量不是变量。</b></div>
+</section>
+
+<section>
+  <div class="sh"><span class="n">03</span><h2>离线几何判据：20/20</h2><span class="r"></span></div>
+  <div class="fig">
+    <h3>覆盖空洞（以阵列波束宽为单位） vs 速率</h3>
+    <p class="cap">空洞由重标定焦点表离线算出——不需要信道模型、不需要噪声、不需要跑速率仿真。横轴对数。</p>
+    <svg viewBox="0 0 620 300" role="img" aria-label="覆盖空洞与速率的分离散点图">
+      <line class="gl" x1="58" y1="59"  x2="600" y2="59"/>
+      <line class="gl" x1="58" y1="118" x2="600" y2="118"/>
+      <line class="gl" x1="58" y1="177" x2="600" y2="177"/>
+      <line class="gl" x1="58" y1="235" x2="600" y2="235"/>
+      <text class="al" x="50" y="62"  text-anchor="end">100%</text>
+      <text class="al" x="50" y="121" text-anchor="end">80%</text>
+      <text class="al" x="50" y="180" text-anchor="end">60%</text>
+      <text class="al" x="50" y="238" text-anchor="end">40%</text>
+      <text class="al" x="90"  y="266" text-anchor="middle">0.3</text>
+      <text class="al" x="185" y="266" text-anchor="middle">1</text>
+      <text class="al" x="356" y="266" text-anchor="middle">10</text>
+      <text class="al" x="546" y="266" text-anchor="middle">100</text>
+      <text class="al" x="329" y="285" text-anchor="middle">最大覆盖空洞 ÷ 阵列波束宽 (2/N<sub>t</sub>)</text>
+
+      <line x1="185" y1="30" x2="185" y2="250" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 4"/>
+      <text class="lbl" x="192" y="243" fill="var(--accent2)">判据阈值 = 1</text>
+      <g fill="var(--ok)">
+        <circle cx="90" cy="51" r="4.5"/><circle cx="90" cy="54" r="4.5"/><circle cx="90" cy="51" r="4.5"/>
+        <circle cx="144" cy="59" r="4.5"/><circle cx="144" cy="56" r="4.5"/>
+        <circle cx="144" cy="54" r="4.5"/><circle cx="144" cy="56" r="4.5"/>
+      </g>
+      <g fill="var(--bad)">
+        <circle cx="356" cy="139" r="4.5"/>
+        <circle cx="451" cy="180" r="4.5"/><circle cx="453" cy="191" r="4.5"/><circle cx="453" cy="188" r="4.5"/>
+        <circle cx="451" cy="200" r="4.5"/><circle cx="453" cy="180" r="4.5"/><circle cx="451" cy="183" r="4.5"/>
+        <circle cx="483" cy="100" r="4.5"/><circle cx="506" cy="121" r="4.5"/>
+        <circle cx="546" cy="177" r="4.5"/><circle cx="546" cy="153" r="4.5"/>
+        <circle cx="566" cy="232" r="4.5"/><circle cx="566" cy="203" r="4.5"/>
+      </g>
+      <text class="lbl" x="117" y="80" text-anchor="middle" fill="var(--ok)">全部 ≥ 100%</text>
+      <text class="lbl" x="470" y="72" text-anchor="middle" fill="var(--bad)">全部 ≤ 86%</text>
+    </svg>
+  </div>
+  <div class="card" style="margin-top:12px">
+    <p><b>空洞 ≤ 1 个波束宽 ⇒ 全部 ≥100%；≥ 8 个 ⇒ 全部 ≤86%。零重叠。</b>
+    它把「这套系统能共享到什么程度」从一个蒙特卡洛速率问题，变成对一张离线表的一次几何检查。</p>
+    <div class="red"><b>已修复的统计量 bug。</b>早先版本只在焦点之间求差，因此「密集但很窄」的焦点簇会读出极小的空洞而蒙混过关
+    （K=4/Δ=0.125 读 0.6 却只有 41%）。修正为先用区域边界夹住区间再求差，两个反例现在都读 128.7。
+    <b>此前 25 个配置是用带 bug 的版本打分的，结论不受影响（都用 baseline 梳子），但在重跑之前不能引用「25/25」。</b></div>
+  </div>
+</section>
+
+<section>
+  <div class="sh"><span class="n">04</span><h2>三个研究问题的答案</h2><span class="r"></span></div>
   <div class="scroll"><table>
-    <thead><tr><th>候选方向</th><th>判定</th><th>依据</th></tr></thead>
+    <thead><tr><th>问题</th><th>结论</th></tr></thead>
     <tbody>
-      <tr><td>多径鲁棒 + DDBS 结构化分离</td><td><span class="chip bad">判死</span></td><td>四关实测：K=3 可辨识天花板，加导频无效</td></tr>
-      <tr><td>ISAC 反打（多径→散射体）</td><td><span class="chip bad">已占</span></td><td>2509.14850 / 2309.14012 / Radar Rainbow JSAC'25</td></tr>
-      <tr><td>DDBS 波束跟踪</td><td><span class="chip bad">被抢先</span></td><td>Radar Rainbow Beams, Schober, JSAC'25</td></tr>
-      <tr><td>UPA / 3D DDBS</td><td><span class="chip warn">已被覆盖</span></td><td>OJ-COMS 全文式(21)(22)已含 2D AoSA</td></tr>
-      <tr class="hi"><td>硬件损伤 / TD 精度鲁棒</td><td><span class="chip ok">成立</span></td><td>OJ-COMS 做架构未做精度；正交轴</td></tr>
+      <tr><td><b>① 原架构/算法在有限 TTD 下还能用吗</b></td>
+        <td><span class="chip bad">不能</span> 32 个 TTD、原参数 → 理想速率的 42–43%；64 个 → 74%。</td></tr>
+      <tr class="hi"><td><b>② 设计新方案逼近理想</b></td>
+        <td><span class="chip ok">能，且代价已精确刻画</span> 两条杠杆：<b>(i) 重标定查找表</b>——免费、纯算法，而且<b>必需</b>（85% 的焦点偏移超过一个栅距）；<b>(ii) 导频梳子 Δ ≤ 2/P</b>，即 K ≈ P。</td></tr>
+      <tr><td><b>③ 抛弃 DD-BS 换新架构</b></td>
+        <td><span class="chip warn">按原提法关闭</span> θ<sub>t</sub> 偏置是承重的（单独缩小它反而更差，12%）；共享极限是子阵波束宽性质，不是参数选择。</td></tr>
     </tbody>
   </table></div>
-  <div class="note"><b>方法论要点：</b>每个方向先用最小探针做 go/no-go，再投入理论。多径方向用了 4 个脚本、数小时便证伪，避免了数月沉没成本。</div>
 </section>
 
-<!-- 被否定的方向 -->
 <section>
-  <div class="sh"><span class="n">02</span><h2>方向 A：多径 — 据实判死</h2><span class="r"></span></div>
-  <div class="scroll"><table>
-    <thead><tr><th>关卡</th><th>测什么</th><th>结果</th><th>判读</th></tr></thead>
-    <tbody>
-      <tr><td class="m">A</td><td>baseline 会崩吗</td><td class="n">缺口 0.4 → 1.5</td><td>没崩；只在富散射区间显著</td></tr>
-      <tr><td class="m">B</td><td>功率域能分路径吗</td><td class="n">det 0.33</td><td>仅 LoS，随 SNR 平</td></tr>
-      <tr><td class="m">C</td><td>相位域能分吗</td><td class="n">det 0.55</td><td>翻倍但仍<b>随 SNR 持平</b></td></tr>
-      <tr><td class="m">D</td><td>能变速率吗</td><td class="n">closure &lt; 0</td><td>转化不划算</td></tr>
-      <tr><td class="m">K</td><td>加导频能救吗</td><td class="n">0.49→0.37</td><td>K=3/6/10 反而下降</td></tr>
-    </tbody>
-  </table></div>
-  <p style="margin-top:11px;color:var(--ink2);font-size:14px"><b>决定性证据</b>：检测率<b>随 SNR 完全持平</b> → 缺的不是噪声余量，而是 K=3 的<b>可辨识性上限</b>。后续 K-sweep 证实"多花导频"这根杠杆也撬不动——baseline 式增补导频高度相关，几乎不增加 sensing 多样性。</p>
-</section>
+  <div class="sh"><span class="n">05</span><h2>关键实测</h2><span class="r"></span></div>
 
-<!-- 核心成果 -->
-<section>
-  <div class="sh"><span class="n">03</span><h2>方向 B：核心发现与两个贡献</h2><span class="r"></span></div>
-
-  <div class="card">
-    <h3 style="font-size:15px;margin-bottom:7px">发现：非对称脆弱性</h3>
-    <p style="font-size:14px;color:var(--ink2)">DDBS 对 <b>TD 精度</b>灾难性敏感（12-bit → 速率仅 6%），而对 <b>PS 比特</b>（2-bit 保 99%）、<b>时延抖动</b>（5 ps 保 98%）、<b>相噪</b>均鲁棒。</p>
-    <div class="eq">根因：延迟范围 <b>R = 1.76·γ·f_L·M / (2·f_M·B) ≈ 0.71·(M/B) = 140 ns</b> —— 与 N<sub>t</sub> 无关</div>
-    <p style="font-size:13.5px;color:var(--ink2)">由式(29)(30)代入化简所得，能<b>精确复现论文自身的 θ<sub>t</sub> = −32.95</b>。延迟范围由角度扫描速率（OFDM 符号尺度 M/B）决定，是 DDBS <b>内禀</b>的 —— 所以"压缩范围"不可行，只能攻精度。</p>
-  </div>
-
-  <div class="card">
-    <h3 style="font-size:15px;margin-bottom:7px"><span class="chip acc">贡献 A</span>&nbsp; 混合 TD-PS 拆分 — 修精度轴</h3>
-    <div class="eq">2π·f<sub>m</sub>·τ<sub>n</sub> = <b>2π·f<sub>c</sub>·τ<sub>n</sub></b> (频率无关 → PS 精确实现) + 2π·(f<sub>m</sub>−f<sub>c</sub>)·τ<sub>n</sub> (仅此需 TTD)</div>
-    <p style="font-size:13.5px;color:var(--ink2)">量化误差被放大的系数从 <span class="m">f<sub>H</sub></span> 降到 <span class="m">B/2</span>：</p>
-    <div class="eq">节省比特 = <b>log₂(2·f<sub>H</sub>/B)</b> —— 与 N<sub>t</sub>、θ<sub>t</sub>、R 及目标增益<b>全部无关</b>，仅取决于相对带宽</div>
-    <p style="font-size:13.5px;color:var(--ink2)">带宽越窄省得越多：B=5 GHz → 3.7 bit；B=1 GHz → <b>5.9 bit</b>。且 3-bit PS 仍保 97%，<b>负担未转嫁给相移器</b>。</p>
-  </div>
-
-  <div class="card">
-    <h3 style="font-size:15px;margin-bottom:7px"><span class="chip warn">次要观察</span>&nbsp; Kronecker 分解 — 减少<b>延迟取值种类</b></h3>
-    <p style="font-size:13.5px;color:var(--ink2)">天线索引可<b>精确</b>拆分 n = n<sub>g</sub> + n<sub>q</sub>，于是</p>
-    <div class="eq">τ<sub>n</sub> = [ A(n<sub>g</sub>) + C(n<sub>q</sub>) ] − <b>2·n<sub>g</sub>·n<sub>q</sub>·d²·α<sub>t</sub>/c</b> （仅二次交叉项残留）</div>
-    <p style="font-size:13.5px;color:var(--ink2)">线性项<b>精确可分离</b>，而 DDBS 延迟正是线性主导（140 ns vs 二次项 0.72 ns）。故延迟剖面只需 <span class="m">N<sub>t</sub>/P + P</span> 种<b>不同取值</b>（在 <span class="m">P=√N<sub>t</sub></span> 最小化 → 32 种）。<b>但这不是元件数缩减</b>（见页首勘误）—— 实际收益仅限于固定延迟线组的制造与校准，应作为<b>次要观察</b>呈现。</p>
-    <div class="note" style="margin-top:9px"><b>最漂亮的一点：</b>让 DDBS 硬件上难做的那个巨大 θ<sub>t</sub>，恰恰是让这个分解几乎精确的原因。</div>
-  </div>
-</section>
-
-<!-- 图 -->
-<section>
-  <div class="sh"><span class="n">04</span><h2>关键实测</h2><span class="r"></span></div>
-  <div class="two">
-    <div class="fig">
-      <h3>端到端速率 vs TD 比特</h3>
-      <p class="cap">纯 TD 在 13→12 bit 断崖式崩塌；混合架构撑到 10 bit。</p>
-      <svg viewBox="0 0 520 250" role="img" aria-label="Rate versus TD bits: the pure-TD architecture collapses between 13 and 12 bits while the hybrid holds near ideal down to 10 bits">
-        <line class="gl" x1="46" y1="174" x2="506" y2="174"/>
-        <line class="gl" x1="46" y1="134" x2="506" y2="134"/>
-        <line class="gl" x1="46" y1="94" x2="506" y2="94"/>
-        <line class="gl" x1="46" y1="54" x2="506" y2="54"/>
-        <text class="al" x="41" y="177" text-anchor="end">1</text>
-        <text class="al" x="41" y="137" text-anchor="end">2</text>
-        <text class="al" x="41" y="97" text-anchor="end">3</text>
-        <text class="al" x="41" y="57" text-anchor="end">4</text>
-        <line class="gl" x1="46" y1="23.2" x2="506" y2="23.2" stroke-dasharray="4 3" stroke="var(--ink3)"/>
-        <text class="al" x="502" y="19" text-anchor="end" style="fill:var(--ink3)">ideal 4.771</text>
-        <polyline class="ln" style="stroke:var(--accent)" points="46.0,23.6 161.0,23.4 218.5,23.2 276.0,23.7 333.5,25.0 391.0,30.7 448.5,69.8 506.0,135.0"/>
-        <polyline class="ln" style="stroke:var(--bad)" points="46.0,23.8 161.0,34.5 218.5,74.9 276.0,209.4 333.5,209.6 391.0,209.0 448.5,209.2 506.0,209.7"/>
-        <circle cx="276.0" cy="209.4" r="3.4" style="fill:var(--bad);stroke:var(--card);stroke-width:1.5"/>
-        <circle cx="276.0" cy="23.7" r="3.4" style="fill:var(--accent);stroke:var(--card);stroke-width:1.5"/>
-        <text class="lbl" style="fill:var(--accent2)" x="60" y="40">混合 TD-PS</text>
-        <text class="lbl" style="fill:var(--bad)" x="300" y="199">纯 TD（baseline 架构）</text>
-        <text class="al" x="247" y="238" text-anchor="middle" style="fill:var(--bad)">断崖</text>
-        <text class="al" x="46" y="224" text-anchor="middle">16</text>
-        <text class="al" x="218" y="224" text-anchor="middle">13</text>
-        <text class="al" x="276" y="224" text-anchor="middle">12</text>
-        <text class="al" x="391" y="224" text-anchor="middle">10</text>
-        <text class="al" x="506" y="224" text-anchor="middle">8</text>
-        <text class="al" x="276" y="247" text-anchor="middle" style="letter-spacing:.05em">TD resolution (bits)</text>
-      </svg>
-    </div>
-
-    <div class="fig">
-      <h3>消融：32 种延迟取值、12-bit</h3>
-      <p class="cap">占理想速率的比例。载荷结论是<b>精度</b>那一级。</p>
-      <svg viewBox="0 0 520 250" role="img" aria-label="Ablation at 32 TTDs and 12-bit: the AoSA form reaches 3 percent of ideal rate, adding the hybrid split reaches 16 percent, adding Kronecker reaches 100 percent">
-        <line class="gl" x1="150" y1="30" x2="150" y2="200"/>
-        <line class="gl" x1="240" y1="30" x2="240" y2="200"/>
-        <line class="gl" x1="330" y1="30" x2="330" y2="200"/>
-        <line class="gl" x1="420" y1="30" x2="420" y2="200"/>
-        <line class="gl" x1="510" y1="30" x2="510" y2="200"/>
-        <rect x="150" y="44" width="12.2" height="30" rx="4" style="fill:var(--bad)"/>
-        <rect x="150" y="104" width="57" height="30" rx="4" style="fill:var(--warn)"/>
-        <rect x="150" y="164" width="360" height="30" rx="4" style="fill:var(--accent)"/>
-        <text class="lbl" style="fill:var(--ink2)" x="144" y="63" text-anchor="end">AoSA 形式</text>
-        <text class="lbl" style="fill:var(--ink2)" x="144" y="123" text-anchor="end">+ 混合 TD-PS</text>
-        <text class="lbl" style="fill:var(--ink)" x="144" y="183" text-anchor="end">+ Kronecker</text>
-        <text class="lbl" style="fill:var(--bad)" x="170" y="63">3%</text>
-        <text class="lbl" style="fill:var(--warn)" x="215" y="123">16%</text>
-        <text class="lbl" style="fill:#fff" x="470" y="183" text-anchor="end">100%</text>
-        <text class="al" x="150" y="215" text-anchor="middle">0</text>
-        <text class="al" x="330" y="215" text-anchor="middle">50%</text>
-        <text class="al" x="510" y="215" text-anchor="middle">100%</text>
-        <text class="al" x="330" y="240" text-anchor="middle" style="letter-spacing:.05em">fraction of ideal rate</text>
-      </svg>
-    </div>
-  </div>
-
-  <div class="red" style="margin-top:12px"><b>引用注意：</b>「+ 混合 TD-PS」这一臂随比特<b>非单调</b>（0.495→0.478→0.595→0.753→0.646→0.622）。该臂已完全失效，选中哪个虚假峰接近随机，起伏来自蒙特卡洛噪声。<b>只能报"≈10–16%，即失效"，不可引用其中任何排序。</b></div>
-</section>
-
-<!-- 定位 -->
-<section>
-  <div class="sh"><span class="n">05</span><h2>定位与红线</h2><span class="r"></span></div>
-  <div class="card">
-    <h3 style="font-size:15px;margin-bottom:8px">vs OJ-COMS 2026（Qaid, Nasir, Al-Ahmadi, Y. Liu）</h3>
-    <p style="font-size:14px;color:var(--ink2)">他们减 TD <b>数量</b>（AoSA 共享，<b>假设延迟值理想</b>）；你补上他们<b>假设掉的精度维度</b>。两者正交 —— 正确姿态是<b>叠加</b>而非竞争：<span class="m">hw_probe_composition.m</span> 在他们的工作点（P=2，128 TTD）上验证"同架构下省约 4 比特"。</p>
-    <div class="red"><b>红线：不可声称"打败 OJ-COMS"。</b>档案中的 <span class="m">ojcoms</span> 臂是"他们的架构 + <b>原始</b> DDBS 参数"，而他们的完整方案还包含参数重设计、sector-shift、距离交错与 ~12 发导频。可主张的对标是 <span class="m">shared</span> 臂（他们的共享 + 你的贡献 A）。</div>
-  </div>
-  <div class="card">
-    <h3 style="font-size:15px;margin-bottom:8px">vs Chang &amp; Chiueh, TWC 2024 —— 结论相反，而这正是卖点</h3>
-    <div class="scroll" style="box-shadow:none;border:none"><table style="min-width:460px">
-      <thead><tr><th></th><th>Chang &amp; Chiueh</th><th>本工作</th></tr></thead>
+  <div class="fig" style="margin-bottom:12px">
+    <h3>A · 共享 TTD 下的坍塌与恢复</h3>
+    <div class="scroll" style="margin-top:9px"><table>
+      <thead><tr><th>配置</th><th class="n">速率</th><th class="n">占理想</th><th>读法</th></tr></thead>
       <tbody>
-        <tr><td>任务</td><td>混合波束成形</td><td>DDBS 波束训练</td></tr>
-        <tr><td>信道</td><td>远场 AoD</td><td>近场球面波 + 距离</td></tr>
-        <tr class="hi"><td>延迟范围</td><td class="n">~2 ns（孔径限）</td><td class="n">~140 ns（θ<sub>t</sub> 驱动）</td></tr>
-        <tr><td>结论</td><td>粗 TTD 可接受</td><td>粗 TTD 灾难性</td></tr>
+        <tr><td>256 TTD（每天线一个）</td><td class="n">4.742</td><td class="n">100%</td><td>baseline</td></tr>
+        <tr><td>32 TTD，原参数 K=3</td><td class="n">2.042</td><td class="n">43%</td><td><span class="chip bad">坍塌</span></td></tr>
+        <tr><td>32 TTD，重标定查找表</td><td class="n">—</td><td class="n">38%</td><td>纯算法、免费（自 10% 起）</td></tr>
+        <tr class="hi"><td>32 TTD，K=8 且 Δ=2/P</td><td class="n">4.728</td><td class="n">100%</td><td><span class="chip ok">全恢复</span></td></tr>
+        <tr><td>32 TTD，K=16 但 Δ=0.5</td><td class="n">2.773</td><td class="n">58%</td><td>导频翻倍也救不回来</td></tr>
       </tbody>
     </table></div>
-    <p style="font-size:13.5px;color:var(--ink2);margin-top:10px">同等<b>绝对</b> LSB 下 DDBS 多需 log₂(67) ≈ <b>6 bit</b>。先前量化研究之所以认为"粗 TTD 没问题"，是因其延迟范围受孔径限制；<b>DDBS 训练波形是异类——这正是该瓶颈此前被漏掉的原因</b>。</p>
+  </div>
+
+  <div class="two">
+    <div class="fig">
+      <h3>B · 交换律的四个 P</h3>
+      <p class="cap">最小导频数随共享因子线性增长。</p>
+      <div class="scroll"><table style="min-width:0">
+        <thead><tr><th class="n">P</th><th class="n">N<sub>TTD</sub></th><th class="n">K<sub>min</sub></th></tr></thead>
+        <tbody>
+          <tr><td class="n">2</td><td class="n">128</td><td class="n">3 ᵃ</td></tr>
+          <tr><td class="n">4</td><td class="n">64</td><td class="n">≤5</td></tr>
+          <tr class="hi"><td class="n">8</td><td class="n">32</td><td class="n">7</td></tr>
+          <tr><td class="n">16</td><td class="n">16</td><td class="n">≤18</td></tr>
+        </tbody>
+      </table></div>
+      <p class="cap" style="margin-top:8px">ᵃ 受 K≥3 下限限制，非共享所致。P=4/16 待细扫确认。</p>
+    </div>
+    <div class="fig">
+      <h3>C · 对带宽不敏感</h3>
+      <p class="cap">B 变 4 倍，K<sub>min</sub> 不动——这排除了一切正比于 B 的相位误差解释。</p>
+      <div class="scroll"><table style="min-width:0">
+        <thead><tr><th class="n">B</th><th class="n">K<sub>min</sub></th><th class="n">曾预测</th></tr></thead>
+        <tbody>
+          <tr><td class="n">2.5 GHz</td><td class="n">9</td><td class="n">6</td></tr>
+          <tr><td class="n">5 GHz</td><td class="n">9</td><td class="n">12</td></tr>
+          <tr><td class="n">10 GHz</td><td class="n">9</td><td class="n">24</td></tr>
+        </tbody>
+      </table></div>
+      <p class="cap" style="margin-top:8px">（此处 K 用粗阶梯，故读 9 而非 7。）</p>
+    </div>
+  </div>
+
+  <div class="fig" style="margin-top:12px">
+    <h3>D · 参数重设计——免费的赠品，不是买来的</h3>
+    <p class="cap">导频数一旦按 ① 付清，把扫描率 s 降到 K<sub>0</sub>/K <b>不损失任何速率</b>（行是平的），却把所需延迟量程压掉 4 倍。</p>
+    <div class="scroll"><table>
+      <thead><tr><th class="n">s</th><th class="n">K</th><th class="n">θ<sub>t</sub></th><th class="n">延迟量程</th><th class="n">256 TTD</th><th class="n">128 TTD</th><th class="n">64 TTD</th><th class="n">32 TTD</th></tr></thead>
+      <tbody>
+        <tr><td class="n">1.00</td><td class="n">3</td><td class="n">31.73</td><td class="n">134.8 ns</td><td class="n">4.740</td><td class="n">4.689</td><td class="n">3.665</td><td class="n">1.683</td></tr>
+        <tr><td class="n">0.50</td><td class="n">6</td><td class="n">15.86</td><td class="n">67.4 ns</td><td class="n">4.788</td><td class="n">4.771</td><td class="n">4.686</td><td class="n">4.127</td></tr>
+        <tr class="hi"><td class="n">0.25</td><td class="n">12</td><td class="n">7.93</td><td class="n">33.7 ns</td><td class="n">4.744</td><td class="n">4.733</td><td class="n">4.721</td><td class="n">4.767</td></tr>
+      </tbody>
+    </table></div>
+    <p style="margin-top:10px">总延迟线预算（元件数 × 量程）：<b>256×134.8 ns → 32×33.7 ns，降 32 倍</b>。
+    这直接打在「140 ns 的 TTD 器件做不出来」这个 baseline 从未给出的数字上。</p>
   </div>
 </section>
 
-<!-- 可信度 -->
 <section>
-  <div class="sh"><span class="n">06</span><h2>过程中修正的四个错误</h2><span class="r"></span></div>
+  <div class="sh"><span class="n">06</span><h2>被证伪的六条路线</h2><span class="r"></span></div>
   <div class="card">
-    <ul style="margin:0">
-      <li><b>服务波束理想化</b> — baseline 训练函数用理想 <span class="m">TTD_beam</span> 服务，只测了估计阶段 → 补 e2e 管线。</li>
-      <li><b>e2e 只修了一半</b> — 修复只用在训练波束、服务波束仍朴素，被它拖死整条链 → 修正后优势才显现。</li>
-      <li><b>共享基线被重复补偿</b> — PS 已含 f<sub>c</sub> 项却又加一次，<b>压低了我自己的对标基线</b>（0.479 → 正确 0.668）→ 已修。</li>
-      <li><b>文档静默写入失败</b> — 一次 THEORY.md 替换未匹配，导致状态汇报不准 → 已补并核实章节存在。</li>
+    <p>记录在案，因为它们同时是论文的边界声明，也是审稿人会自己去试的方向。</p>
+    <div class="scroll" style="margin-top:11px"><table>
+      <thead><tr><th>路线 / 假设</th><th>杀死它的证据</th></tr></thead>
+      <tbody>
+        <tr><td><b>多径分离</b>（Gate A–D + K 扫描）</td><td>分离天花板与 SNR 无关（结构性），速率转化为负，加导频无用。</td></tr>
+        <tr><td><b>贡献 A：TD/PS 分解</b></td><td>公开常识。Dai/Tan TWC 2022 §IV-A 原文提出，Najjar TWC 2024 §V-B 用同一动机再推。<b>只能引用。</b></td></tr>
+        <tr><td><b>最坏子载波相位界</b>（∝ B）</td><td>B 变 4 倍 K<sub>min</sub> 不动；边界处该相位已达 11–22 rad 却仍通过。</td></tr>
+        <tr><td><b>增益截断 / 可用带宽</b></td><td>实测可用带宽比预测宽 5–25 倍（2.64 vs 0.21 GHz）。</td></tr>
+        <tr><td><b>不变量 P·|θ<sub>t</sub>| ≤ 85</b></td><td>K=9,s=1 处该值 253.8（超标 3 倍）却给出 100%。它是 K 的伪装——重设计只走了 θ<sub>t</sub> 与 K 绑定的对角线。</td></tr>
+        <tr><td><b>栅瓣误选 → 子阵消歧</b></td><td>位移统计在通过（100%）与失败（42%）配置上完全一致；且 |k|=1 几乎为零而 |k|≥2 主导。</td></tr>
+        <tr><td><b>非均匀导频放置</b></td><td>贪心在关键处输 21–24 个点（K=8：79% vs 100%），其偏移最大间隙 0.624 远超 0.25 上限。<b>且原理上不可救</b>：所需分辨率 2/P 由子阵波束宽决定，不随位置变化，固定预算下最优梳子就是均匀的。</td></tr>
+      </tbody>
+    </table></div>
+    <div class="note"><b>方法论教训，要写进论文自己的实验设计里：</b>
+    绝不要在候选变量彼此绑定的轨迹上拟合不变量。「边界处 P·|θ<sub>t</sub>|=84.6」和「边界处 K=9」在那条对角线上是同一句话。</div>
+  </div>
+</section>
+
+<section>
+  <div class="sh"><span class="n">07</span><h2>竞品与红线</h2><span class="r"></span></div>
+  <div class="card">
+    <ul>
+      <li><b>OJ-COMS 2026（Qaid 等）</b>——AoSA/分组 TTD，降的是 TTD <b>数量</b>，但假设组内时延理想，且未给出 K–TTD 边界。<b>必须在同 N<sub>TTD</sub>、同 K 下直接对比。</b></li>
+      <li><b>Najjar 等 TWC 2024</b>——TTD 分辨率约束，远场，量程 ~ ps 级。结论相反是因为受孔径限制。</li>
+      <li><b>Dai/Tan TWC 2022</b>——delay-phase precoding 的分解原始出处，是 baseline 自己的参考文献 [31]。</li>
+      <li><b>器件现实</b>：文献中可实现 TTD 量程 1.47 ps – 508 ps；DDBS 训练波形需 <b>140 ns</b>，超出最好器件约 280 倍。baseline 从未给出这个数字。</li>
     </ul>
-    <div class="note" style="margin-top:11px">前三个都<b>直接影响结论方向</b>，其中第三个是朝着"让提案显得更好"的方向出错。仓库中现存数字均为修正后结果，且 <span class="m">THEORY.md</span> §10 载明三条引用注意事项。</div>
+    <div class="red"><b>论文必须自己先说的三件事：</b>
+    ① K=12 已高于近场 rainbow 的 10 个导频（但 TTD 少 8 倍）；
+    ② 判据阈值是<b>软</b>的（1.14 → 98%，1.33 → 73%），别写成硬门限；
+    ③ Θ 常数与 K<sub>min</sub>/P ≈ 0.875 目前只在 P=8 精确测得。</div>
   </div>
 </section>
 
-<!-- 资产 -->
 <section>
-  <div class="sh"><span class="n">07</span><h2>仓库资产</h2><span class="r"></span></div>
-  <div class="card">
-    <p class="files">
-      <b>experiments/hw_impair/</b> — 主线（方向 B）<br>
-      &nbsp;&nbsp;THEORY.md · 10 节完整推导（引理→命题→设计准则→定位）<br>
-      &nbsp;&nbsp;ddbs_beam_arch.m · 统一生成器：架构 × P × 比特 × 绝对 LSB<br>
-      &nbsp;&nbsp;ddbs_beam_hybrid.m / ddbs_beam_impaired.m · 贡献 A 与损伤模型<br>
-      &nbsp;&nbsp;hw_probe_{gain,hybrid,rate,rate_e2e,surface,ablation_rate}.m · 6 个探针<br><br>
-      <b>experiments/derisk/</b> — 方向 A 排雷（A–D 四关 + K-sweep + 报告）<br>
-      <b>experiments/upa/</b> — UPA 交叉耦合探针（含解析界与 P 准则）
-    </p>
-  </div>
+  <div class="sh"><span class="n">08</span><h2>仓库资产</h2><span class="r"></span></div>
+  <div class="card"><div class="files">
+    <b>experiments/hw_impair/</b> — 主线（MATLAB）<br>
+    &nbsp;&nbsp;<b>ensure_baseline.m</b> 自动定位 baseline 代码 · <b>actual_focus.m</b> 离线重标定焦点表 · <b>cov_gap.m</b> 边界感知空洞统计<br>
+    &nbsp;&nbsp;<b>ddbs_beam_arch.m</b> 架构×分辨率统一生成器（full / shared / ojcoms / kron）<br>
+    &nbsp;&nbsp;<b>pilot_spacing_map.m</b> ★ 主曲线 · <b>kspace_map.m</b> (K,s) 独立扫描 · <b>frontier_ttd_pilot.m</b> 边界与带宽<br>
+    &nbsp;&nbsp;<b>diag_shared_mechanism.m</b> 机理诊断 · <b>map_focus_shift.m</b> 焦点位移 · <b>nonuniform_comb.m</b> 贪心放置<br>
+    &nbsp;&nbsp;<b>redesign_for_shared.m</b> 参数重设计 · <b>limited_ttd_algo.m</b> 四种解码臂 · <b>THEORY.md</b> 20 节完整记录<br>
+    <b>experiments/derisk/</b> — 多径方向（已判死，含全部证据）<br>
+    <b>experiments/upa/</b> — UPA 探针（已降优先级）
+  </div></div>
 </section>
 
-<!-- 下一步 -->
 <section>
-  <div class="sh"><span class="n">08</span><h2>剩余工作</h2><span class="r"></span></div>
+  <div class="sh"><span class="n">09</span><h2>剩余工作</h2><span class="r"></span></div>
   <div class="card">
-    <ul style="margin:0">
-      <li><b>跑 composition 实验</b> — 在 AoSA 工作点验证"省 4 比特"，这是支撑投稿的核心图。</li>
-      <li><b>核实贡献 A 的先验性</b> — "PS 管 f<sub>c</sub> 相位、TTD 管色散"是 delay-phase precoding 的基本思想；需确认该<b>分解本身</b>是否已被明确写过。若已有，贡献降级为"已知技巧的新应用 + 定量分析"，仍可发但须如实定位。</li>
-      <li><b>写作</b> — 将 THEORY.md 扩为 Section III/IV：引理 1（量化→增益）、命题 1（延迟范围闭式）、定理 1（比特节省）。</li>
-      <li><b>补全损伤矩阵</b> — 抖动 / 相噪 / 插损在 Kronecker 架构下的鲁棒性（目前仅覆盖量化）。</li>
-      <li><b>多用户与多径</b> — 作为鲁棒性附加维度，而非主线。</li>
+    <ul>
+      <li><b>补齐 K<sub>min</sub> 曲线</b>：P=4 与 P=16 用单位步长细扫，确认 K<sub>min</sub>/P ≈ 0.875 是否跨 P 成立。</li>
+      <li><b>重跑 kspace_map / diag_shared_mechanism</b>：用修正后的 cov_gap 重新打分，把判据命中数补回一个可引用的总数。</li>
+      <li><b>与 OJ-COMS AoSA 直接对比</b>：同 N<sub>TTD</sub>、同 K。这是审稿人第一个会问的。</li>
+      <li><b>标准曲线</b>：速率–SNR、速率–N<sub>TTD</sub>，以及重标定 / 梳子修正的消融。</li>
+      <li><b>硬件成本核算表</b>：元件数 × 量程 × 所需比特，对照可实现器件。</li>
     </ul>
   </div>
 </section>
 
 <footer>
-  <span>repo · GGBOND-MAN/DD-BS</span>
-  <span>branch · claude/paper-baseline-direction-2cklzr</span>
-  <span>18 commits · 3 experiment packages</span>
+  <span>DD-BS · claude/paper-baseline-direction-2cklzr</span>
+  <span>Nt=256 · fc=30 GHz · B=5 GHz · M=1024 · SNR=15 dB</span>
+  <span>全部数字为 MATLAB 实测，非估计</span>
 </footer>
 
 </div>
