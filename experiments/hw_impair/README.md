@@ -199,3 +199,31 @@ property of how DDBS places its sweep — potentially removable, not just tradea
 |---|---|
 | `decouple_theta.m` | Scale `theta_t`, `theta_p` independently at P=8, K=3. Does a small-`theta_t` / large-`theta_p` point reach ~100% of ideal **with full coverage**? If yes the tradeoff is broken. |
 | `diag_shared_mechanism.m` | Measures usable bandwidth and coverage holes directly — confirms or refutes the truncation mechanism. |
+
+---
+
+## MECHANISM — coverage holes, and a deterministic design test
+
+`diag_shared_mechanism.m` + `decouple_theta.m`:
+
+- **Gain truncation refuted.** Measured usable bandwidth is 5-25x wider than the
+  sub-array-factor prediction (2.64 vs 0.21 GHz at P=8,K=3).
+- **Coverage holes confirmed, perfectly.** The largest interior gap of the
+  recalibrated focus map, in array beamwidths `2/Nt`:
+  `<= 1` → 99-100% of ideal (4/4); `>= 5` → 42-89% (5/5). No overlap, sharp cliff.
+  `span` reads 1.04 even in total failure — it is useless; the **gap** is the statistic.
+- **The `theta_t`/`theta_p` ratio equation is refuted.** At P=8, K=3 no independent
+  `(theta_t, theta_p)` pair beats 46% of ideal, and shrinking `theta_t` alone makes it
+  *worse* (12% at `s_t=1/16`). So `P*|theta_t| <= 85` is necessary but not sufficient —
+  it holds only along the locus where both scale together.
+
+**Headline claim:** `maxgap(recalibrated focus map) <= 2/Nt` predicts pass/fail across
+all 9 tested configurations. It turns "how much TTD sharing can this system take?" into
+an offline geometric check — no channel, no noise, no rate simulation.
+
+### Open — `map_focus_shift.m`
+Shared TTD makes the delay layer an array spaced `P*lambda/2`, so it has **grating
+lobes every `1/P`**; off `fc` the tilted sub-array pattern may select the wrong lobe,
+displacing the focus by an integer multiple of `1/P` — holes, not blur. Signature:
+`(realized - designed)*P` clusters on integers. If it does, the fix is lobe
+disambiguation and would cost **no extra pilots**. Full reasoning in `THEORY.md` §16.

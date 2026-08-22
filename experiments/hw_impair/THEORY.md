@@ -618,3 +618,105 @@ that a beam which merely walked off the user region cannot register as a win.
 
 That is the concrete form of research question 3: **not a new array, but a new way
 to place the DDBS sweep** — and it is reached from measurement, not assumption.
+
+---
+
+## 16. MEASURED — the mechanism is COVERAGE HOLES, and it yields a deterministic design test
+
+Two probes, two verdicts. One hypothesis died, one criterion survived and is
+stronger than the closed form it replaces.
+
+### 16.1 `diag_shared_mechanism.m` — M1 refuted, M2 confirmed
+
+| P | K | `P*|theta_t|` | BW_meas | BW_pred (M1) | maxgap / (2/Nt) | rate |
+|---|---|---|---|---|---|---|
+| 1 | 3 | 31.7 | 4.55 GHz | 5.00 GHz | 0.9 | ideal |
+| 2 | 3 | 63.5 | 4.55 GHz | 0.84 GHz | 0.9 | 99% |
+| 4 | 3 | 126.9 | 3.29 GHz | 0.42 GHz | **20.2** | 74% |
+| 4 | 6 | 63.5 | 4.31 GHz | 0.84 GHz | 0.3 | 100% |
+| 8 | 3 | 253.8 | 2.64 GHz | 0.21 GHz | **53.6** | 42% |
+| 8 | 6 | 126.9 | 4.14 GHz | 0.42 GHz | **10.1** | 89% |
+| 8 | 9 | 84.6 | 5.00 GHz | 0.63 GHz | 0.3 | 100% |
+| 8 | 12 | 63.5 | 4.67 GHz | 0.84 GHz | 0.3 | 100% |
+| 16 | 6 | 253.8 | 4.49 GHz | 0.21 GHz | **25.1** | 58% |
+| 16 | 12 | 126.9 | 4.64 GHz | 0.42 GHz | **5.2** | 80% |
+| 16 | 18 | 84.6 | 5.00 GHz | 0.63 GHz | 0.3 | 99% |
+
+**(M1) gain truncation is REFUTED.** Measured usable bandwidth is **5-25x wider**
+than the sub-array-factor prediction (2.64 GHz vs 0.21 GHz at P=8,K=3). The
+sub-array tilt does not remove the band; §15's "usable bandwidth" step is wrong,
+and with it the `4 eta theta_p /(P |theta_t|)` coverage formula and (*).
+
+**(M2) coverage holes are CONFIRMED, with perfect discrimination.** The largest
+interior gap of the recalibrated focus map, measured in array beamwidths `2/Nt`:
+
+    maxgap <= 1 beamwidth  ->  99-100% of ideal   (4 of 4 configurations)
+    maxgap >= 5 beamwidths ->  42-89% of ideal    (5 of 5 configurations)
+
+No overlap, and the transition is a cliff (0.3 → 5.2), not a slope. The `span`
+statistic, by contrast, reads 1.04 in **every** row including total failure — a
+few stray foci still reach the edges. **Span is useless; the gap is everything.**
+(`decouple_theta.m` has been corrected to report `maxgap/(2/Nt)` instead of span.)
+
+### 16.2 `decouple_theta.m` — the ratio design equation is refuted
+
+P=8 (32 TTDs), K=3, scanning `theta_t` and `theta_p` independently. Reference:
+full TTD 4.742; P=8 with baseline params 2.042 (43%).
+
+| `s_t` | `s_p` | `P*|theta_t|` | rate | % ideal |
+|---|---|---|---|---|
+| 1 | 1 | 253.8 | 2.093 | 44% |
+| 0.5 | 0.5 | 126.9 | **2.186** | **46%** (best) |
+| 0.25 | 1 | 63.5 | 1.416 | 30% |
+| 0.125 | 1 | 31.7 | 1.382 | 29% |
+| 0.0625 | 1 | 15.9 | 0.576 | 12% |
+
+**Nothing wins.** The ceiling across the whole scan is 46%, and shrinking
+`theta_t` at fixed `theta_p` makes it monotonically **worse** — the opposite of
+what (*) predicts. Two consequences:
+
+1. **`P*|theta_t| <= 85` is necessary but NOT sufficient.** At `s_t = 0.25` the
+   invariant is satisfied (63.5) and the rate is 30%. It only holds along the
+   `redesign_for_shared` locus where `theta_t` and `theta_p` scale **together**.
+2. **Research question 3 in the "just re-centre the sweep" form is closed.** The
+   `theta_t` offset is not a removable nuisance; it is load-bearing. Shrinking it
+   alone destroys the beam family rather than freeing it.
+
+### 16.3 What actually survives — and it is a better contribution than the closed form
+
+Both mechanism hypotheses (§15 phase bound, §16 ratio equation) are dead. What is
+established by measurement, and is not weakened by their death:
+
+| # | claim | evidence |
+|---|---|---|
+| 1 | DD-BS collapses under shared TTD at its own parameters | 32 TTD, K=3 → 42-43% of ideal |
+| 2 | Recalibrated lookup recovers part of it for free (algorithm only) | §12: 32 TTD 10% → 38% |
+| 3 | Joint parameter redesign recovers ~100% | §14: 32 TTD, K=9-12 → 100% |
+| 4 | The frontier is `K_min = ceil(1.12 P)`, i.e. `P*|theta_t| <= ~85` | 4/4 points exact |
+| 5 | The frontier is **bandwidth-independent** | `K_min = 9` at B = 2.5/5/10 GHz |
+| 6 | **A deterministic design test**: `maxgap(recalibrated focus map) <= 2/Nt` | 9/9 configurations, no overlap |
+
+Claim 6 is the one to lead with. It converts "how much TTD sharing can this
+system take?" from a Monte-Carlo rate question into a **closed geometric check on
+an offline-computable table** — no channel model, no noise realization, no rate
+simulation. That is a stronger and more reusable statement than a closed-form
+threshold would have been, and it is what makes claims 4-5 usable by a designer.
+
+### 16.4 The one structural hypothesis still standing — `map_focus_shift.m`
+
+Sharing makes the TTD layer an array of `Nt/P` elements spaced `P*d = P*lambda/2`,
+so its array factor has **grating lobes every `1/P` in `sin(theta)`**. The
+per-antenna PS forms the sub-array pattern that selects the right lobe; off `fc`
+that pattern tilts and a **different lobe wins**, displacing the realized focus by
+an integer multiple of `1/P`. This produces *holes* rather than blur — which is
+what was measured, and which neither dead hypothesis explains.
+
+Falsifiable signature: `(realized - designed) * P` must cluster on **integers**.
+`map_focus_shift.m` measures exactly that, plus which designed foci fall into the
+biggest hole and where they end up instead.
+
+- clusters on integers with `|k| >= 1` → grating-lobe selection; the fix is lobe
+  disambiguation at the sub-array level, and it would be **pilot-free** — a real
+  answer to research question 2 that costs no overhead;
+- spread uniformly (`|k - round(k)| ~ 0.25`) → the map is smoothly warped, the
+  structural route closes, and claims 1-6 stand as the paper.
