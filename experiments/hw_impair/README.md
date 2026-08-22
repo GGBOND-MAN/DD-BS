@@ -227,3 +227,31 @@ lobes every `1/P`**; off `fc` the tilted sub-array pattern may select the wrong 
 displacing the focus by an integer multiple of `1/P` — holes, not blur. Signature:
 `(realized - designed)*P` clusters on integers. If it does, the fix is lobe
 disambiguation and would cost **no extra pilots**. Full reasoning in `THEORY.md` §16.
+
+---
+
+## DISPLACEMENT IS NOT THE FAILURE MODE (`map_focus_shift.m`)
+
+At P=8 the **passing** configuration is scrambled as badly as the failing one:
+
+| P | K | rate | stayed put | mean `|dev|` | maxgap/BW |
+|---|---|---|---|---|---|
+| 8 | 3 | **42%** | 14.1% | 0.617 | **50.1** |
+| 8 | 9 | **100%** | 15.7% | 0.578 | **0.3** |
+
+Only the gap separates them. With the recalibrated lookup, **displacement is
+harmless because it is known** — which is exactly why simple recalibration beat a
+full match filter in §12: the information was never lost, only mislabeled.
+
+Grating-lobe selection is **not confirmed** (`|k-round(k)|` = 0.09 at P=4 but
+0.16-0.24 at P=8, and `|k|=1` is ~0% while `|k|>=2` dominates) and is **moot** —
+the statistic is the same for pass and fail, so it is not the discriminator.
+
+### The law now decomposes
+    (C1) coverage, DD-BS's own:  K * s >= K0 = 3
+    (C2) sharing, new:           P * |theta_t0| * s <= Theta ~ 85
+    =>  K_min = K0 * P * |theta_t0| / Theta = 1.12 * P     (was fitted, now derived)
+
+`kspace_map.m` scans K and s independently at P=8 to test it. Both
+single-constraint corners (K=9,s=1 and K=3,s=1/3) must FAIL. The resulting heat
+map with both boundaries drawn on it is the paper's key figure.
