@@ -429,3 +429,93 @@ to be prior art:
 3. it exceeds realizable TTD hardware by 2-3 orders of magnitude;
 4. it trades against pilot overhead as `R ∝ 1/S`, with a floor at the aperture
    limit — giving designers the first realizable operating point for DDBS.
+
+---
+
+## 14. MEASURED — parameter redesign makes shared-TTD DD-BS work, and the tradeoff obeys a clean law
+
+`redesign_for_shared.m`, Nt=256, fc=30 GHz, B=5 GHz, M=1024, SNR=15 dB, N_iter=60,
+single-path LoS, decoded with the **recalibrated lookup** (`actual_focus`):
+
+| `s` | `K` | `theta_t` | delay range | 256 TTD | 128 TTD | 64 TTD | 32 TTD |
+|---|---|---|---|---|---|---|---|
+| 1.00 (baseline) | 3 | 31.73 | 134.8 ns | 4.740 | 4.689 | 3.665 | **1.683** |
+| 0.50 | 6 | 15.86 | 67.4 ns | 4.788 | 4.771 | 4.686 | 4.127 |
+| 0.25 | 12 | 7.93 | 33.7 ns | 4.744 | 4.733 | 4.721 | **4.767** |
+
+### What the table says
+
+1. **Read across the top row** — the baseline design point collapses under sharing:
+   64 TTD → 77%, 32 TTD → **35%** of ideal. This is the negative answer to
+   research question 1 (*does the original architecture/algorithm survive limited
+   TTD?* — **no**), already established in §12 and reconfirmed here.
+2. **Read the last column downward** — at a *fixed* 32-TTD budget, redesigning the
+   sweep rate takes the rate from 1.683 → 4.127 → **4.767**, i.e. from 35% to
+   **100.6%** of the full-per-antenna ideal (4.740). The loss is not intrinsic to
+   sharing; it is intrinsic to *using the baseline's parameters* under sharing.
+3. **Read the first column downward** — 4.740 / 4.788 / 4.744, flat. Slowing the
+   sweep costs **no rate at all** when TTDs are plentiful. So `s` is a pure
+   *hardware-for-pilots* exchange, not a rate sacrifice — the comparison is clean.
+4. **The price is pilots, and it is bounded.** K goes 3 → 12. In the baseline's own
+   Table I the competing schemes need 10 (near-field rainbow), 140 (hierarchical),
+   266 (two-stage), 2560 (exhaustive). K=12 is at parity with near-field rainbow
+   and still 12x-200x below the rest — while using **8x fewer TTD elements** than
+   any of them.
+
+### Two hardware savings at once
+
+The redesign also shrinks the delay **range** (§13's unrealizability problem):
+134.8 ns → 33.7 ns, a 4x reduction, because the range is set by `|theta_t|` and
+`|theta_t| ∝ s`. Total delay-line budget (elements x range):
+
+    baseline   256 x 134.8 ns = 34509 ns-elements
+    redesigned  32 x  33.7 ns =  1078 ns-elements     -> 32x less
+
+### The design law: `K_min ~ 1.5 P`, i.e. `K * N_TTD ~ 1.5 Nt`
+
+Taking the smallest K that reaches the ideal rate in each column:
+
+| N_TTD | 256 | 128 | 64 | 32 |
+|---|---|---|---|---|
+| K_min | 3 | 3 | 6 | 12 |
+| K/P | 3 | 1.5 | 1.5 | 1.5 |
+
+`K/P >= 1.5` holds at **every** entry of the table, passing and failing alike
+(P=4,K=3 → K/P=0.75 fails at 77%; P=8,K=6 → 0.75 fails at 87%). So the frontier is
+the hyperbola `K * N_TTD = 1.5 * Nt = 384`.
+
+**Where the constant comes from.** Antennas in a group of P share one delay, so the
+residual phase is `2*pi*(f_m - fc)*(tau_g - tau_n)` with `|f_m - fc| <= B/2`, and the
+intra-group delay spread is dominated by the linear DDBS term, `d_tau ~ P*d*|theta_t|/c`.
+Holding the worst-case residual phase below a fixed `phi_max`, with `d = c/(2 fc)`:
+
+    P * |theta_t|  <=  4 * fc * phi_max / (pi * B)                      (INVARIANT)
+
+and since the redesign ties `|theta_t| = |theta_t0| * K0 / K`,
+
+    K / P  >=  (pi * B / (4 * fc * phi_max)) * |theta_t0| * K0   ∝  B / fc.
+
+The measured `K/P = 1.5` at `B/fc = 1/6` pins `phi_max ~ 8.6 rad` and predicts
+`K/P = 9 * (B/fc)`. **This prediction is falsifiable and untested**: at P=8, K_min
+should be 6 / 12 / 24 for B = 2.5 / 5 / 10 GHz. `frontier_ttd_pilot.m` runs exactly
+that check (plus a finer frontier including P=16). Until it passes, the constant is
+empirical at one operating point and must be reported as such.
+
+### Status against the user's three research questions
+
+| Q | status |
+|---|---|
+| 1. Does the original architecture/algorithm survive limited TTD? | **Answered: no.** 32 TTD → 35% of ideal. |
+| 2. Design something that approaches ideal under limited TTD | **Answered, two independent levers, both measured**: (i) recalibrated lookup — free, algorithm-only, 32 TTD 10% → 38%; (ii) parameter redesign — 32 TTD → 100.6% at K=12. Together they are the paper. |
+| 3. Abandon DD-BS for a new architecture | not started; only worth doing if (2) turns out to be beatable. |
+
+### What is genuinely new here vs. §13's prior art
+
+§13 killed contribution A (the TD/PS split) as prior art. **This is a different
+claim** and none of the surveyed work states it:
+- the shared-TTD failure of DD-BS is not a resolution problem but a **parameter-choice**
+  problem (Najjar et al. treat resolution; OJ-COMS changes the architecture but keeps
+  ideal per-group delays and does not report a K-vs-TTD frontier);
+- the exchange rate `K * N_TTD = const * Nt` with `const ∝ B/fc`;
+- the resulting joint reduction of **TTD count and TTD delay range** — the latter
+  being the §13 unrealizability problem, which the same knob attacks.

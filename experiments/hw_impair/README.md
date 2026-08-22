@@ -142,3 +142,30 @@ and required bits as a function of (Nt, B, fc, theta_t) — expect roughly
 of `B` for pure-TD — plus the TD-count x TD-precision cost surface against the
 AoSA baseline.
 
+
+---
+
+## TASK 1 RESULT — redesigning DD-BS for a shared-TTD architecture (`redesign_for_shared.m`)
+
+Rate (bit/s/Hz) with the recalibrated lookup, SNR=15 dB, Nt=256, M=1024:
+
+| `s` | `K` | `theta_t` | range | 256 TTD | 128 TTD | 64 TTD | 32 TTD |
+|---|---|---|---|---|---|---|---|
+| 1.00 (baseline) | 3 | 31.73 | 134.8 ns | 4.740 | 4.689 | 3.665 | **1.683** |
+| 0.50 | 6 | 15.86 | 67.4 ns | 4.788 | 4.771 | 4.686 | 4.127 |
+| 0.25 | 12 | 7.93 | 33.7 ns | 4.744 | 4.733 | 4.721 | **4.767** |
+
+**32 TTDs (8x fewer) + K=12 pilots reaches 100.6% of the full-per-antenna ideal**,
+where the baseline parameter set gets 35%. Slowing the sweep costs no rate when
+TTDs are plentiful (first column is flat), so this is a pure hardware-for-pilots
+exchange. It also cuts the required delay range 4x (134.8 → 33.7 ns), attacking
+the unrealizability problem of THEORY §13 with the same knob.
+
+Frontier: `K_min ~ 1.5 P`, i.e. **`K * N_TTD ~ 1.5 Nt`**, holding at every entry.
+Derivation and the falsifiable `K/P ∝ B/fc` prediction are in `THEORY.md` §14.
+
+### Next check — `frontier_ttd_pilot.m`
+Fills the frontier in finely (adds P=16) and **tests** the predicted scaling:
+at P=8, `K_min` should be 6 / 12 / 24 for B = 2.5 / 5 / 10 GHz. Run it and send
+the two tables; if the B-scaling holds, the law is a design rule rather than a
+fitted constant.
