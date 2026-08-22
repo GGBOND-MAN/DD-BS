@@ -255,3 +255,37 @@ the statistic is the same for pass and fail, so it is not the discriminator.
 `kspace_map.m` scans K and s independently at P=8 to test it. Both
 single-constraint corners (K=9,s=1 and K=3,s=1/3) must FAIL. The resulting heat
 map with both boundaries drawn on it is the paper's key figure.
+
+---
+
+## CORRECTION — `P*|theta_t| <= 85` was `K` in disguise (`kspace_map.m`)
+
+Scanning K and `s` **independently** at P=8 kills both constraints of THEORY §17:
+
+| K \ s | 1.00 | 0.50 | 0.333 | 0.250 |
+|---|---|---|---|---|
+| 3 | 43% | 46% | 39% | 42% |
+| 6 | 72% | 87% | 86% | 80% |
+| 9 | **100%** | **102%** | 100% | 96% |
+| 12 | 101% | 101% | 99% | 100% |
+
+`K=9, s=1` has `P*|theta_t| = 253.8` — 3x over the supposed limit — and gives 100%.
+Rows are flat; **only K matters.** The false invariant arose because
+`redesign_for_shared` walked the diagonal `s = K0/K`, where `theta_t` is a function
+of K. *Never fit an invariant on a locus where the candidate variables are tied.*
+
+**What survives is simpler:** `K_min` depends on **P alone** (3, 5, 9, 18 for
+P = 2, 4, 8, 16), independent of `s`, `theta_t` and `B`. So the two knobs separate:
+pay `K = ceil(1.12 P)` for the TTD budget (unavoidable), then set `s = K0/K` for
+**free** — rate is flat along the row — and collect the 4x delay-range reduction
+as a bonus rather than a purchase.
+
+**The maxgap criterion is now 25/25** across every configuration tested, having
+outlived four mechanism hypotheses. It is the centerpiece.
+
+### Next — `pilot_spacing_map.m`
+The baseline hard-wires the pilot comb to `Delta = 2/K`. Untying K from `Delta`
+tests the one hypothesis that explains the null results as well as the positive
+ones: `Delta <= 2/P` (comb finer than the sub-array beam) and `K*Delta >= 2` (span).
+If `K=8, Delta=0.25` passes while `K=16, Delta=0.5` fails, the fix is **place the
+pilots better**, not **use more of them**.
