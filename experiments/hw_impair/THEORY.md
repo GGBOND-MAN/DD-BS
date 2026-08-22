@@ -905,3 +905,92 @@ would be a second algorithm-side contribution alongside the recalibrated lookup.
 If instead only K matters and `Delta` does nothing, the comb model joins the other
 four and `K_min ~ 1.12 P` stands as a purely empirical law — still publishable,
 with the maxgap criterion as its operational form.
+
+---
+
+## 19. CONFIRMED (20/20) — the variable is pilot RESOLUTION, not pilot count
+
+`pilot_spacing_map.m`, P=8, `s=1` throughout, K and comb spacing `Delta` untied.
+Predictions were registered in §18.5 **before** the run.
+
+| K | `Delta` | span `K*Delta` | `Delta*P/2` | rate | % ideal | predicted |
+|---|---|---|---|---|---|---|
+| 4 | 0.500 | 2.00 | 2.00 | 2.616 | 55% | FAIL ✓ |
+| 4 | 0.250 | 1.00 | 1.00 | 2.853 | 60% | FAIL ✓ |
+| 4 | 0.125 | 0.50 | 0.50 | 1.956 | 41% | FAIL ✓ |
+| 6 | 0.333 | 2.00 | 1.33 | 3.484 | 73% | FAIL ✓ |
+| 6 | 0.250 | 1.50 | 1.00 | 3.749 | 79% | FAIL ✓ |
+| **8** | **0.250** | 2.00 | 1.00 | **4.728** | **100%** | **PASS ✓** |
+| 8 | 0.500 | 4.00 | 2.00 | 2.486 | 52% | FAIL ✓ |
+| 8 | 0.125 | 1.00 | 0.50 | 3.243 | 68% | FAIL ✓ |
+| 12 | 0.500 | 6.00 | 2.00 | 2.784 | 59% | FAIL ✓ |
+| 12 | 0.250 | 3.00 | 1.00 | 4.820 | 102% | PASS ✓ |
+| **16** | **0.500** | 8.00 | 2.00 | **2.773** | **58%** | **FAIL ✓** |
+| 16 | 0.250 | 4.00 | 1.00 | 4.895 | 103% | PASS ✓ |
+| 16 | 0.125 | 2.00 | 0.50 | 4.857 | 102% | PASS ✓ |
+
+**20 of 20 correct.** Every predicted PASS measured 100-103%; every predicted FAIL
+measured 41-86%. The corner named in advance is decisive:
+
+    K =  8, Delta = 0.25  ->  100%        half the pilots, right spacing
+    K = 16, Delta = 0.50  ->   58%        twice the pilots, wrong spacing
+
+**Pilot count is not the variable. Pilot resolution is.** The design rule is
+
+    (R1) Delta <= 2/P      comb finer than the sub-array beamwidth
+    (R2) K*Delta >= 2      comb still spans the sweep
+
+and with the baseline's hard-wired `Delta = 2/K` these collapse to **`K >= P`**,
+i.e. **`K * N_TTD = Nt`** — the exchange law, now derived rather than fitted.
+
+### 19.1 Correction to §14-§18: `K_min = P`, not `1.12 P`
+
+K=8 passes at P=8. `frontier_ttd_pilot`'s ladder skipped K=7 and K=8 (it stepped
+3, 6, 9, 12), so its `K_min = 9` was **ladder resolution, not a measurement**, and
+`1.12 P` was the artifact of fitting four such ladder values. The law is
+
+    K_min = P     <=>     K * N_TTD = Nt = 256
+
+Confirmed at P=8. Still to confirm at P=4 (predict `K_min = 4`; the ladder
+bracketed it in (3,5]) and P=16 (predict 16; bracketed in (12,18]).
+
+### 19.2 BUG — the maxgap criterion had two counterexamples, and why
+
+| K | `Delta` | gap/BW | rate |
+|---|---|---|---|
+| 4 | 0.125 | **0.6** | **41%** |
+| 6 | 0.125 | **0.3** | **51%** |
+
+Both read "pass" on a criterion I had reported as 25/25. The statistic was wrong,
+not the criterion: it took `max(diff(sorted foci))` over the foci **alone**, so a
+set that is dense but **narrow** — these two have comb span `K*Delta` = 0.5 and
+0.75 against the 2 needed — piles its foci into a tight clump and reports a tiny
+gap, because a difference taken only *between* foci cannot see the empty region
+beyond the outermost one. Fixed in `cov_gap.m` by bounding the interval with the
+region edges before differencing, so the distance from the extreme focus to the
+edge counts as the hole it is. `decouple_theta`, `kspace_map`,
+`diag_shared_mechanism` and `pilot_spacing_map` now all call it.
+
+**The 25/25 claim must not be repeated until `pilot_spacing_map` is re-run with
+the fix.** Earlier configurations all used the baseline comb (span 2) so their
+numbers should be nearly unchanged, but that is an expectation, not a result.
+
+### 19.3 What this opens — non-uniform pilot placement (`nonuniform_comb.m`)
+
+A *uniform* comb provably cannot beat `K = P`: covering a span of 2 at resolution
+`2/P` needs P points. But `map_focus_shift` showed the holes are **not uniformly
+distributed** — they concentrate near boresight (P=4: `[-0.020, +0.137]`; P=8:
+`[-0.140, +0.252]`). Where sharing opens no hole, fine resolution is wasted.
+
+So a **non-uniform comb — dense where holes appear, sparse elsewhere — should
+reach full coverage with `K < P`**, which no uniform comb can. And the selection
+is free: each candidate offset's realized coverage comes from exactly the
+`actual_focus` table the recalibrated lookup already computes offline, so this is
+greedy set cover over precomputed sets, at zero run-time cost and zero extra
+measurement.
+
+- greedy `K < P` reaches ~100% while uniform at the same K does not → **pilot
+  placement is a second algorithm-side lever**, "place them better" beats "use
+  more", and `K >= P` is a property of uniform combs only;
+- greedy never beats uniform → `K >= P` is fundamental to the beam family and
+  `K * N_TTD = Nt` stands unconditionally, which is the cleaner paper.
