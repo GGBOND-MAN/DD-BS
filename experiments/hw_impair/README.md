@@ -289,3 +289,34 @@ tests the one hypothesis that explains the null results as well as the positive
 ones: `Delta <= 2/P` (comb finer than the sub-array beam) and `K*Delta >= 2` (span).
 If `K=8, Delta=0.25` passes while `K=16, Delta=0.5` fails, the fix is **place the
 pilots better**, not **use more of them**.
+
+---
+
+## CLOSED — one master curve; non-uniform placement refuted
+
+**Gap statistic fixed, criterion restored 20/20** on the re-run: the two
+counterexamples now read 128.7 beamwidths instead of 0.6/0.3. (The 9+16 earlier
+configurations were scored with the buggy version; conclusions unaffected, but the
+"25/25" figure is withdrawn until they are re-run.)
+
+**The master curve.** Among all configurations satisfying `K*Delta >= 2`, rate
+depends on `Delta*P/2` — comb spacing over sub-array beamwidth — and on nothing else:
+
+| `Delta*P/2` | 0.50 | 0.67 | 1.00 | 1.14 | 1.33 | 2.00 |
+|---|---|---|---|---|---|---|
+| rate | 102-103% | 101% | 100-103% | 98% | 73% | 52-59% |
+
+At 2.00 the rate is 52-59% for K = 4, 6, 8, 12 **and** 16 — a four-fold change in
+pilot count moves nothing. **K drops out.** One curve explains the whole table;
+this is the paper's key figure.
+
+**`K_min = 7` at P=8** (K=6 → 73%, K=7 → 98%), so `K_min ~ 0.875 P` and the
+exchange law is `K * N_TTD ~ Nt`. Earlier values (1.12P, then P) were ladder
+artifacts; this one comes from a spacing sweep, not a bracket.
+
+**Non-uniform placement is refuted** (`nonuniform_comb.m`): greedy loses 21-24
+points exactly where it matters (K=8: 79% vs 100%), because its offsets leave a
+0.624 gap against the 0.25 limit. And it cannot be repaired — the required
+resolution `2/P` is set by the sub-array beamwidth, which does not vary with
+position, so the optimal fixed-budget comb *is* the uniform one. **The pilots must
+be paid; there is no placement trick.**

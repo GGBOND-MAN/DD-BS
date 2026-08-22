@@ -994,3 +994,98 @@ measurement.
   more", and `K >= P` is a property of uniform combs only;
 - greedy never beats uniform → `K >= P` is fundamental to the beam family and
   `K * N_TTD = Nt` stands unconditionally, which is the cleaner paper.
+
+---
+
+## 20. CLOSED — one master curve, and non-uniform placement refuted
+
+### 20.1 The gap statistic, re-run with the fix
+
+Both counterexamples of §19.2 are gone: `K=4, Delta=0.125` and `K=6, Delta=0.125`
+now read **128.7** beamwidths instead of 0.6 / 0.3, matching their 41% / 51% rates.
+The criterion is **20/20 on this table with the corrected statistic**.
+
+The 9 configurations of §16 and the 16 of §18 were scored with the buggy version.
+All of them used the baseline comb (span 2), which has no narrow-clump case, so
+their conclusions are unaffected — but **they have not been re-verified, and the
+"25/25" figure must not be quoted** until they are.
+
+### 20.2 The master curve — rate depends on `Delta*P/2` alone
+
+Collecting every configuration that satisfies R2 (`K*Delta >= 2`), across K = 7
+to 16 and three comb spacings, and plotting against the single ratio
+**comb spacing / sub-array beamwidth**:
+
+| `Delta*P/2` | configurations | rate |
+|---|---|---|
+| 0.50 | K=16, `Delta`=0.125 | 102%, 103% |
+| 0.67 | K=12, `Delta`=0.167 | 101% |
+| 1.00 | K=8/12/16, `Delta`=0.25 | 100%, 101%, 102%, 103% |
+| 1.14 | K=7, `Delta`=0.286 | **98%** |
+| 1.33 | K=6, `Delta`=0.333 | **73%** |
+| 2.00 | K=4..16, `Delta`=0.50 | 52%, 55%, 56%, 58%, 59%, 59% |
+
+**K itself has dropped out.** At `Delta*P/2 = 2` the rate is 52-59% for K = 4, 6,
+8, 12 and 16 alike — a four-fold change in pilot count moves nothing. At
+`Delta*P/2 = 1` it is 100-103% for K = 8, 12, 16. One variable explains the whole
+table. **This is the paper's key figure**: a single curve of rate against
+`Delta/(2/P)`, with every (K, `Delta`, P) point falling on it.
+
+R1 is a **soft** threshold, as a beamwidth argument should be: 1.00 → 100%,
+1.14 → 98%, 1.33 → 73%, 2.00 → ~55%. The knee is between 1.14 and 1.33.
+
+### 20.3 `K_min` corrected once more: 7 at P=8
+
+With the uniform baseline comb (`Delta = 2/K`, span 2) the transition sits between
+K=6 (73%) and K=7 (98%), so at the 95% criterion **`K_min = 7 = 0.875 P`**, not 8
+and not 9. The honest statement of the exchange law is
+
+    K_min ~ P        <=>        K * N_TTD ~ Nt
+
+with the constant measured at 0.875 for P=8 and the threshold soft. Earlier values
+(1.12 P from §15, P from §19) were ladder artifacts of successively finer scans;
+this one comes from a comb-spacing sweep and a rate curve rather than a bracket.
+
+### 20.4 Non-uniform placement — REFUTED, and principled
+
+`nonuniform_comb.m`, greedy set cover over 32 precomputed coverage sets:
+
+| K | uniform | greedy |
+|---|---|---|
+| 5 | 64% | 66% |
+| 6 | 71% | **76%** |
+| 7 | **98%** | 77% |
+| 8 | **100%** | 79% |
+| 9 | **103%** | 87% |
+
+Greedy wins by 2-5 points where both fail, and loses by 21-24 points everywhere it
+matters. Its chosen offsets, sorted, are
+`0.000 0.312 0.438 1.062 1.125 1.438 1.688 1.938` — **largest gap 0.624, two and a
+half times the `2/P = 0.25` limit.** It broke exactly the property that §19 proved
+decisive.
+
+Two things went wrong, one fixable and one not:
+
+- **fixable:** the coverage bins were 1-D in angle, while the requirement is 2-D
+  over `(theta, alpha)`. Greedy optimized the wrong space.
+- **not fixable:** even with correct bins, the required resolution is `2/P`, set by
+  the sub-array beamwidth — a quantity that **does not vary with position**. A
+  fixed budget of K points covering a span of 2 at a position-independent
+  resolution is minimized by the **uniform** comb. Non-uniform placement can only
+  help when the required resolution varies, and here it does not.
+
+The holes concentrating near boresight (§17) does not change this: the holes live
+in `sin(theta)`, the comb lives in offset space, and an offset shift translates the
+whole strip pattern — so uniform spacing in offset is what produces uniform
+resolution in coverage.
+
+**Research question 2 is therefore answered in full, and negatively for the
+"cheaper algorithm" route**: there is no placement trick. The pilots must be paid.
+
+### 20.5 Status of the three research questions
+
+| Q | verdict |
+|---|---|
+| 1. Does DD-BS's architecture/algorithm survive limited TTD? | **No.** 32 TTDs at baseline parameters → 42-43% of ideal. |
+| 2. Design something that approaches ideal under limited TTD | **Yes, and the cost is now exactly characterized.** (i) recalibrated lookup — free, algorithm-only, and *necessary*: 85% of foci move by more than a grating step; (ii) pilot comb at `Delta <= 2/P`, i.e. `K ~ P`. No cheaper placement exists (§20.4). |
+| 3. Abandon DD-BS for a new architecture | **Closed as posed.** The `theta_t` offset is load-bearing (§16.2) and the sweep cannot be re-centred away; the sharing limit is a sub-array-beamwidth property, not a parameter choice. |
