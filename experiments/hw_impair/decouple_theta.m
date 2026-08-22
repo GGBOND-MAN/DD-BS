@@ -63,14 +63,13 @@ fprintf('           P=8 (32 TTD), baseline params, K=3 -> %.3f (%.0f%%)\n\n', ..
 fprintf('Independent scan at P=%d, K=%d.  "cov" = span of the recalibrated focus\n', P, K);
 fprintf('angles as a fraction of the user region sin(theta) in [-0.87, 0.87].\n');
 fprintf('A win needs HIGH rate AND cov ~ 1.\n\n');
-fprintf('%7s %7s %9s | %8s %6s %8s %9s\n','s_t','s_p','P*|th_t|','rate','%ideal','cov','pred K/P');
+fprintf('%7s %7s %9s | %8s %6s %8s %9s\n','s_t','s_p','P*|th_t|','rate','%ideal','cov','maxgap/BW');
 for s_t = [1 0.5 0.25 0.125 0.0625]
     for s_p = [1 0.5]
         TH1 = TH1_0*s_t;  TH2 = TH2_0*s_p;
         out = runpt(TH1,TH2,P,K, Nt,B,fc,M,d,AL1,AL2,f,CH,SNR_t,SNR_dB,Q);
-        predKP = 1.732*abs(TH1)/(4*0.443*abs(TH2));
-        fprintf('%7.4f %7.2f %9.1f | %8.3f %5.0f%% %8.2f %9.2f\n', ...
-                s_t, s_p, P*abs(TH1), out(1), 100*out(1)/r_ideal(1), out(2), predKP);
+        fprintf('%7.4f %7.2f %9.1f | %8.3f %5.0f%% %8.2f %9.1f\n', ...
+                s_t, s_p, P*abs(TH1), out(1), 100*out(1)/r_ideal(1), out(2), out(3));
     end
 end
 fprintf(['\nIf a small-theta_t / large-theta_p cell reaches ~100%% of ideal WITH\n' ...
@@ -86,8 +85,13 @@ arch='full'; if P>1, arch='shared'; end
 w  = ddbs_beam_arch(Nt,B,fc,M,d,TH1,TH2,AL1,AL2,K,arch,P,Inf,Inf,[]);
 fl = actual_focus(w,focus_loc,Nt,fc,B,M,d,K);
 r  = mean(cellfun(@(h) rate_ongrid(h,w,fl,Nt,B,fc,M,d,SNR_t,SNR_dB,Q,K), CH));
-sn = fl(:,1,:); cov = (min(max(sn(:)),0.866) - max(min(sn(:)),-0.866))/1.732;
-out = [r, max(cov,0)];
+sn = sort(reshape(fl(:,1,:),[],1));
+cov = (min(max(sn),0.866) - max(min(sn),-0.866))/1.732;
+inner = sn(sn>=-0.866 & sn<=0.866);
+out = [r, max(cov,0), max(diff(inner))/(2/Nt)];   % NOTE: span alone is NOT
+% sufficient -- diag_shared_mechanism showed span stays ~1.04 even in total
+% failure, because a few stray foci still reach the edges. The largest interior
+% GAP, in array beamwidths, is the statistic that actually discriminates.
 end
 
 function r = rate_ongrid(h,w,focus_loc,Nt,B,fc,M,d,SNR_t,SNR_dB,Q,K)
