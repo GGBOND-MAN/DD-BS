@@ -1718,3 +1718,56 @@ is weaker and needs its own design rather than a patch.
   and the 16-TTD operating point becomes usable.
 - **no gain anywhere** → the coarse `alpha` was already good enough; report it and
   drop the idea rather than tuning the grid until something moves.
+
+---
+
+## 29. The gate "failed" and thereby PROVED the observable exists
+
+`phase_refine.m` stage 0, first run:
+
+| `r_true` | `r_hat` | error |
+|---|---|---|
+| 19.88 | 142.60 | **+122.72** |
+| 90.49 | 29.05 | **-61.44** |
+| 195.71 | 195.55 | -0.16 |
+| 102.72 | 164.00 | **+61.28** |
+| 57.35 | 57.35 | **+0.00** |
+
+2/5 within 1 m, so the gate reported failure. **The gate was wrong, and the
+pattern says why.** The matched filter
+
+    r_hat = argmax_r | sum_m z_m exp(+j 2 pi f_m r/c) |,   f_m = fc + df*(m-m0)
+
+is periodic in `r` with period `c/df = c*M/B = 61.44 m`, and the three "failures"
+are **+1.997, -1.000 and +0.997 periods** — exact integer lobes. Meanwhile the two
+correct lobes came back at **0.00 m and -0.16 m**, consistent with the in-lobe
+resolution `c/(2B) = 3 cm`.
+
+Random errors do not land on integer multiples of a period, and a missing
+observable does not produce centimetre-exact hits. **The propagation phase is
+present, the ranging observable is real, and its resolution is ~3 cm.**
+
+### 29.1 The bug was mine, and it was in the file's own stated precondition
+
+§28.3 said, before the run: *"the search is seeded by the coarse estimate and is
+unambiguous only while the coarse range error stays below `c/(2 B/M) = 30.7 m`."*
+Both the gate and `onechan` then searched the **entire** `[5, 200]` grid with no
+seed. Writing a precondition and not implementing it is worse than not stating it,
+because the gate then reads as evidence about the model when it is evidence about
+the code.
+
+Fixed: `range_mf` now takes a seed and confines the search to one period around
+it. The gate seeds with the **true** range — its only job is the existence test —
+while the refinement seeds with `r_coarse = (1-theta^2)/(2*alpha)` from the coarse
+table entry, which is the realistic case, and returns how many lobes away it
+landed so the precondition can be monitored rather than assumed.
+
+### 29.2 The precondition is real and will bite at long range
+
+`r = (1-theta^2)/(2 alpha)` gives `dr/r = -d(alpha)/alpha`, so a 10% error in the
+coarse `alpha` is a 10% error in `r` — 20 m at `r = 200 m`, inside the +/-30.7 m
+window, but 20% would be 40 m and outside it. Long-range users with a poor coarse
+`alpha` are exactly the ones the refinement is meant to help, so the lobe counter
+is not decoration: **if it reports frequent non-zero lobes, the refinement needs a
+better seed (more distance pilots) before it can be used, and that trade must be
+reported rather than hidden.**
