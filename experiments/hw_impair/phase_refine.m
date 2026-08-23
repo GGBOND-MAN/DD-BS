@@ -51,7 +51,8 @@ rgrid = Rmin:0.05:Rmax;                       % ranging search grid
 
 % ---------------- STAGE 0: does the ranging phase exist at all? ----------------
 fprintf('=== STAGE 0 gate: is the propagation phase present in the model? ===\n');
-fprintf('unambiguous only while coarse range error < c/(2*B/M) = %.1f m\n', c/(2*B/M));
+fprintf('ambiguity period c*M/B = %.2f m; in-lobe resolution c/(2B) = %.3f m\n', c*M/B, c/(2*B));
+fprintf('search is seeded and confined to one period -- unseeded search picks the\nwrong lobe, which is what the first run of this gate demonstrated.\n');
 rng(7); ok = 0;
 for t = 1:5
     r_true = Rmin + rand*(Rmax-Rmin);  th_true = asin(-0.9+1.8*rand);
@@ -63,7 +64,7 @@ for t = 1:5
         y(m)  = h(m,:)*w(:,1,m);
         bt(m) = exp(1j*km(m)*(N1.'*sn - N2.'*al))*w(:,1,m);
     end
-    r_hat = range_mf(y, bt, f, rgrid, c);
+    r_hat = range_mf(y, bt, f, rgrid, c, r_true);   % seeded: existence test only
     fprintf('  r_true = %6.2f m -> r_hat = %6.2f m   (err %+6.2f m)\n', r_true, r_hat, r_hat-r_true);
     ok = ok + (abs(r_hat-r_true) < 1);
 end
@@ -103,15 +104,31 @@ fprintf(['\nRead: the refinement is applied identically to both arms. If the\n' 
          'the distance-domain shortfall of sec 27.\n']);
 
 % ------------------------------------------------------------------------
-function rhat = range_mf(y, bt, f, rgrid, c)
+function [rhat, namb] = range_mf(y, bt, f, rgrid, c, r_seed)
 % Matched filter in range over the strong subcarriers, after de-embedding the
-% known beam term. This is the phase our magnitude-only argmax discards.
+% known beam term -- the phase our magnitude-only argmax discards.
+%
+% AMBIGUITY, and the bug this call signature exists to prevent. With
+% f_m = fc + df*(m-m0) the matched filter is periodic in r with period c/df =
+% c*M/B (61.44 m here), so searching the whole [Rmin, Rmax] picks a neighbouring
+% lobe whenever the true range is not the strongest one. The first version of
+% this file did exactly that, and its gate failed with errors of -61.44, +61.28
+% and +122.72 m -- integer multiples of the period, which is what proved the
+% observable was present rather than absent. The search is therefore confined to
+% one period around a seed, as the file header always said it must be.
+%
+% Within a period the resolution is set by the bandwidth, c/(2B) = 3 cm here,
+% which is why correctly-lobed estimates come back exact to 1 cm.
 z = y .* conj(bt);
 [~, ord] = sort(abs(bt), 'descend');
 S = ord(1:max(8, round(numel(ord)/4)));          % strong-gain subcarriers only
-E = exp(1j*2*pi*(f(S).')*(rgrid/c));             % |S| x |rgrid|
+half = c/(2*(f(2)-f(1)));                        % half the ambiguity period
+win  = rgrid(rgrid >= r_seed-half & rgrid <= r_seed+half);
+if isempty(win), rhat = r_seed; namb = 0; return; end
+E = exp(1j*2*pi*(f(S).')*(win/c));
 [~, i] = max(abs(z(S).' * E));
-rhat = rgrid(i);
+rhat = win(i);
+namb = round((rhat - r_seed)/(2*half));          % lobes away from the seed (0 = in window)
 end
 
 function r = armrate(sec, rho, arch, L, refine, Nt,B,fc,M,d,f,km,N1,N2,CH,SNR_t,SNR_dB,Q,rgrid,c)
@@ -139,7 +156,8 @@ for t=1:K
         % de-embed the beam at the COARSE estimate, then range-match on phase
         bt = zeros(M,1);
         for m=1:M, bt(m) = exp(1j*km(m)*(N1.'*th - N2.'*al))*w(:,t,m); end
-        rh = range_mf(ys, bt, f, rgrid, c);
+        r_coarse = (1-th^2)/(2*max(al,eps));      % seed from the coarse table entry
+        rh = range_mf(ys, bt, f, rgrid, c, r_coarse);
         al = (1-th^2)/(2*rh);                     % alpha from the refined range
     end
     ws = TTD_beam(Nt,B,fc,M,d,th,al);
