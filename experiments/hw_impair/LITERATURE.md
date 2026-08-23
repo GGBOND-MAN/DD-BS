@@ -97,3 +97,56 @@ been applied, not a discovery:
 
 **Realistic target: 2-3区** (OJ-COMS-tier, or a solid 2区 such as TVT/TCOM if the
 execution is strong). Scope it that way from the start.
+
+---
+
+## E. Beam-squint-assisted LOCALIZATION / ISAC — read, and they constrain us
+
+| # | work | venue | tier (est.) | bearing on this project |
+|---|---|---|---|---|
+| E1 | Luo & Gao, **Beam squint assisted user localization in near-field ISAC systems** | IEEE **TWC** 23(5), May 2024 | **1区** | **Must cite.** They *"derive the trajectory equation for near-field beam squint points and design a way to control such trajectory"*, then use the frequency-domain squint to localize with reduced sweeping overhead — the same physics as DDBS strips, applied to sensing. Also `[44]` in Nguyen & Kim TCOM 2024. **Refinement idea:** multi-carrier **phase difference** between max-power subcarriers across several sweeps → distance RMSE ~0.10 m at 15 dB. |
+| E2 | **Beam-squint assisted joint angle-distance (JAD) localization for near-field communications** (DOI 10.1109/TVT.2026.3706538, accepted) | IEEE **TVT** 2026 | 2区 | **Must cite.** Coarse-to-fine two-stage: stage 1 = coarse joint `(theta, r)` from the **power-spectrum peak** (this is exactly our decision rule); stage 2 = **near-field improved MUSIC** searching locally around it. Explicitly motivated by the **error propagation** of two-step angle-then-distance estimators. |
+
+### What they mean for the claim — the estimator is not available to us
+
+Both papers already occupy the **estimator** territory this project might have
+moved into:
+
+- E1 owns "control the near-field squint trajectory and read location out of the
+  frequency domain";
+- E2 owns "coarse peak, then joint high-resolution refinement, avoiding
+  sequential error propagation".
+
+So **novelty cannot live in the decision rule.** Adding MUSIC or a phase-based
+refinement would be re-doing E2/E1, on top of OJ-COMS's own MF refinement (their
+Sec VI). The correct use is the opposite: **borrow the best available refinement,
+apply it to BOTH arms, and cite them.** That turns it from a novelty risk into a
+robustness result — a reviewer cannot then say the architecture gap would vanish
+under a stronger estimator, because it was measured with one.
+
+### The error-propagation question, answered
+
+The intuition was right but it does not apply to this baseline:
+
+- **DD-BS and OJ-COMS decide with a single `argmax` over subcarriers**, then read a
+  joint `(theta, alpha)` from one table. There is no sequential stage to
+  propagate into, so "we fix the baseline's error propagation" would be **factually
+  wrong** and a reviewer would see it from the algorithm listing.
+- Error propagation is real in **two-step angle-then-distance** estimators — and
+  E2 already published the fix. It cannot be claimed here.
+- What *can* be said, in one sentence citing E2: our decision rule is joint by
+  construction, so it is structurally free of the effect E2 addresses. That is a
+  remark, not a contribution.
+
+### Two things worth borrowing, with their costs
+
+1. **Phase-difference distance refinement (E1).** Our pipeline uses `|sum(y)|^2`
+   and **throws the phase away**. Using the phase across max-power subcarriers
+   could sharpen `alpha` with **no extra pilots** — and `alpha` is exactly where
+   L=16 is weakest (§27, 89% at `L/N_sec = 1.33`). Cheapest transfer, highest fit.
+2. **Coarse-to-fine local refinement (E2).** Maps 1:1 onto our pipeline: argmax +
+   recalibrated table = their stage 1. **But their stage 2 needs a covariance from
+   spatial snapshots**, and a single-antenna UE in beam training receives one
+   scalar per (subcarrier, pilot) — not an array snapshot. Whether an equivalent
+   covariance can be formed from the `M x K` measurements must be checked before
+   adopting it; do not assume it transfers.
