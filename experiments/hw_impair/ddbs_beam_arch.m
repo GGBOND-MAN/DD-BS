@@ -10,16 +10,19 @@ function [w, n_ttd, lsb_used] = ddbs_beam_arch(Nt,B,fc,M,d,theta1,theta2,alpha1,
 %             at fc). This is a GENERIC shared-TTD model -- it is NOT a
 %             reproduction of the OJ-COMS AoSA scheme, which additionally
 %             redesigns the training procedure.
-%   'ojcoms' UNSAFE -- DO NOT QUOTE. See THEORY.md sec 21.5. As coded, the
-%            intra-group residual is 2*pi*f_m*(tau_g - tau_n), the FULL delay
-%            difference rather than the (f_m - fc) part, so the sub-array never
-%            coheres (~42 carrier cycles of spread at EVERY subcarrier, fc
-%            included) and measured rates land at 6-19% of ideal. A real AoSA
-%            cannot work that way or OJ-COMS could not have published it, so
-%            their PS almost certainly carries the fc part of the intra-group
-%            delay -- which would make their architecture identical to 'shared'.
-%            Verify against their text before using this arm for anything.
-%            literal OJ-COMS AoSA form (their eqs (13)-(14)): TTD carries the
+%   'ojcoms' VERIFIED against the published text (OJ-COMS v7 2026, DOI
+%            10.1109/OJCOMS.2026.3695965): their (13) puts the FULL k_m on the
+%            sub-array-centre lattice and their (14) puts ONLY k_c*(n d theta'p
+%            - n^2 d^2 alpha'p) on the PS -- there is no fc*tau intra-group
+%            compensation. So this arm is FAITHFUL and the ~42 carrier cycles of
+%            intra-group spread are real, not a modelling error. They handle it
+%            by RESTRICTING the strong-gain region to a sector and covering the
+%            domain with sector shifting + distance interleaving.
+%            CAVEAT THAT STILL HOLDS: this arm is their ARCHITECTURE under THIS
+%            file's uniform-comb training, not their training procedure, so its
+%            rates must never be quoted as their published result. See THEORY.md
+%            sec 22.
+%            OJ-COMS AoSA form (their eqs (13)-(14)): TTD carries the
 %            full 2*pi*f_m*tau on the sub-array-centre grid; the PS is the plain
 %            per-antenna DDBS term and does NOT compensate the intra-group delay.
 %            Note their full scheme ALSO redesigns the DDBS parameters and adds
