@@ -1771,3 +1771,59 @@ window, but 20% would be 40 m and outside it. Long-range users with a poor coars
 is not decoration: **if it reports frequent non-zero lobes, the refinement needs a
 better seed (more distance pilots) before it can be used, and that trade must be
 reported rather than hidden.**
+
+---
+
+## 30. NEGATIVE — the borrowed phase refinement does not help, and mostly hurts
+
+Gate passed 5/5 (errors 0.00 to 0.32 m), so the ranging observable is real and
+sharp. The refinement built on it is not:
+
+| L | N_TTD | `N_sec` | K | them | them+ph | | ours | ours+ph | |
+|---|---|---|---|---|---|---|---|---|---|
+| 4 | 64 | 4 | 12 | 1.477 | 1.586 | 1.07x | 6.419 | 6.445 | 1.00x |
+| 8 | 32 | 4 | 12 | 0.761 | 0.911 | 1.20x | 4.501 | 4.109 | **0.91x** |
+| 8 | 32 | 8 | 8 | 0.807 | 0.588 | **0.73x** | 6.496 | 6.410 | 0.99x |
+| 16 | 16 | 4 | 12 | 0.879 | 0.889 | 1.01x | 2.150 | 1.726 | **0.80x** |
+| 16 | 16 | 12 | 12 | 0.862 | 0.407 | **0.47x** | 6.072 | 5.731 | **0.94x** |
+
+On the compensated arm it never helps (1.00, 0.91, 0.99, 0.80, 0.94); on theirs it
+is erratic in both directions. §28.4 registered the reading in advance: *"no gain
+anywhere → report it and drop the idea rather than tuning the grid until something
+moves."* That is the call.
+
+### 30.1 Why a 3 cm range estimate makes beamforming worse
+
+Two compounding reasons, and both are about the **pair**, not the range:
+
+1. **The coarse pair is jointly consistent; the refined one is not.** The serving
+   beam uses `(theta_hat, alpha_hat)` from the recalibrated table — the location
+   where the beam *actually focuses*, so the array can form it. Near-field
+   focusing couples angle and range, so a `theta` error is partly absorbed by an
+   `alpha` offset, and the coarse pair may already sit at that compensated
+   optimum. Replacing `alpha` with a **physically accurate** value computed from
+   an **inaccurate** `theta` breaks the compensation. Accurate is not the same as
+   optimal.
+2. **The refinement's own precondition is what sharing destroys.** The range
+   matched filter de-embeds the beam term evaluated at the coarse point, so its
+   accuracy is bounded by the coarse estimate's. The gate succeeded because it
+   used an ideal `L=1` beam; under sharing the beam is distorted and the residual
+   phase is no longer a clean propagation ramp.
+
+### 30.2 Do not stop at "our attempt failed" — bound it
+
+The useful question is whether the failure is in the refinement or in the
+premise. `oracle_loc.m` hands the pipeline the **true** `(theta, alpha)` — no
+search, no estimator — and compares against the coarse table:
+
+- **oracle ≈ coarse** → the table already sits at the beamforming optimum, so
+  **no** estimator can recover anything: not ours, not a joint `(theta, alpha)`
+  search, not MUSIC. The estimator direction then closes with a *bound* rather
+  than a failed attempt, and the recalibrated lookup gains a stronger claim — it
+  is not merely adequate, it is where extra geometric accuracy stops paying.
+- **oracle ≫ coarse** → the headroom is real and the refinement was simply
+  mis-designed (alpha-only, from a `theta` it never re-estimated), which would
+  justify exactly one joint attempt.
+
+Either answer is worth having, and the experiment costs nothing: the oracle arm
+performs no search at all.
