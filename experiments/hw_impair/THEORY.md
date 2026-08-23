@@ -1444,3 +1444,64 @@ next to each rate. **If the eq-(69) block brings L=2 near 5.0, the baseline is
 validated and stage 2 may proceed.** If it does not, the remaining suspect is the
 `(theta'p, p_M)` split of §23.5, and the honest conclusion would be that their
 scheme is not reproducible from the published text.
+
+---
+
+## 25. PRIOR-ART FINDING #4 — Nguyen & Kim, IEEE TCOM 72(10), Oct 2024
+
+Full text verified. **IEEE Transactions on Communications, vol. 72, no. 10,
+Oct 2024, pp. 6633-…, DOI 10.1109/TCOMM.2024.3402616** (Dang Qua Nguyen, Taejoon
+Kim). Not a 2022 preprint — arXiv 2212.07484 is its early version; the published
+venue is TCOM 2024, a stronger venue than the OJ-COMS paper.
+
+### What it contains
+
+1. **The same AoSA structure**: "`Nt`-element ULA is divided into `M` subarrays
+   with `N = Nt/M` antennas per subarray."
+2. **Joint TTD **and** PS optimization under a bounded per-TTD delay**
+   (`0 <= t <= t_max`), explicitly against "the prior works that optimize TTD
+   values while **fixing the PS values**" (their Fig. 2a vs 2b). This is the
+   general principle whose special case is programming the PS with the
+   intra-sub-array `fc` term.
+3. **A minimum-TTD-count law** for a target array gain, in closed form, with the
+   finding that "**the number of TTDs linearly increases with respect to the
+   system bandwidth**".
+4. Delineates `(Nt, M, B, t_max)` for effective compensation — the same parameter
+   set as §13's delay-range analysis.
+
+### What it is not — and why the claim survives, narrowed again
+
+- **Far-field**, and **beam-squint COMPENSATION** (all subcarriers steered to one
+  direction). They separate themselves explicitly from the beam-split
+  **exploitation** camp: *"Unlike the beam squint compensation…, these works
+  exploit the beam squint effect to spread the beams across different OFDM
+  subcarriers simultaneously"* — citing near-field rainbow (Cui & Dai) as `[39]`.
+- No near-field curvature dimension, no beam **training**, no pilot-overhead law.
+
+So it does not block the claim. But it removes what was left of its framing: **"use
+the phase shifter properly instead of fixing it" is TCOM 2024's point**, in the far
+field, with a stronger optimization behind it. The claim must now be stated as an
+application, not a discovery:
+
+> OJ-COMS 2026 applies the fix-the-PS approach to near-field DDBS **training**
+> under sub-array sharing and reports an `L <= 2` ceiling as a consequence.
+> Applying the joint delay-phase principle (Nguyen & Kim TCOM 2024; Dai & Tan TWC
+> 2022) to that training problem removes the ceiling and extends useful sharing to
+> `L = 16`, with a pilot law `K_min ~ P/1.19` that — unlike their TTD-count law —
+> is **independent of bandwidth** (§21.1, measured over a 4x range of B).
+
+The bandwidth contrast is the sharpest remaining hook: their law scales with `B`
+because it is TTD-count-for-array-gain; ours does not because it is
+pilots-for-coverage-under-sharing. Two different laws, and the difference is
+explainable rather than coincidental.
+
+### Honest tier assessment
+
+Most of the framework is now inherited: the architecture (standard AoSA, vendor
+practice), the delay-phase split (Dai & Tan 2022), the joint design principle and
+min-TTD law (Nguyen & Kim 2024), the sectoring/coverage analysis and the grouped
+DDBS training problem itself (Qaid et al. 2026). What remains is one architectural
+substitution inside their scheme plus the measured laws around it. That is a
+**2-3区 contribution, realistically OJ-COMS-tier or a solid 2区** — not 1区. It
+should be scoped and written that way from the start rather than aimed high and
+cut down in review.
