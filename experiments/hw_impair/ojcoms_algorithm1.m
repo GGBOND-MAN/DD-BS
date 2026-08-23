@@ -46,7 +46,20 @@ TAB3 = [-31.797 28.40; -33.840 31.93; -33.545 31.61; -32.102 28.51];  % their Ta
 if L == 2 && Nsec <= 4
     th_t = TAB3(1:Nsec,1);  th_p = TAB3(1:Nsec,2);
     dbg.source = 'Table 3 (verbatim)';
-    alpha_p = 0.158;                                % Table 3
+    % TABLE 3 CONTRADICTS THEIR OWN (69). With alpha'p = 0.158 and
+    % alpha't = -0.533 the focus sweeps alpha in [-0.387, -0.361] -- the whole
+    % pilot set points OUTSIDE the target interval [0.0025, 0.1], so no user can
+    % ever be found. Their (69) gives alpha'p = U = 0.5809, which sweeps
+    % [0.0033, 0.1008], i.e. exactly the target interval by construction; and
+    % 0.5809 is also the DD-BS baseline's own alpha_p = 1859/3200. Three
+    % independent confirmations that 0.158 is a typo. (69) is used, and the
+    % table value is available via alpha_p_mode for comparison.
+    if evalin('base','exist(''OJCOMS_ALPHA_P_TABLE'',''var'')') && ...
+       evalin('base','OJCOMS_ALPHA_P_TABLE')
+        alpha_p = 0.158;  dbg.source = 'Table 3 verbatim (alpha_p = 0.158, out of range)';
+    else
+        alpha_p = U;      dbg.source = 'Table 3 angles + eq (69) alpha_p';
+    end
 else
     % (61)-(63) with S near the upper bound; theta_M walks the sectors.
     th_t = zeros(Nsec,1); th_p = zeros(Nsec,1);

@@ -15,7 +15,7 @@ preprint, it says so.
 | A1 | **Near-field wideband beam training based on distance-dependent beam split** (arXiv 2406.07989) | IEEE **TWC** | **1区** | the baseline. K=3, one TTD per antenna |
 | A2 | Cui & Dai, **Near-field rainbow: wideband beam training for XL-MIMO** (10.1109/TWC.2022.3222198) | IEEE **TWC** 2023 | **1区** | 10 pilots, per-antenna TTD. OJ-COMS's `[22]` |
 | A3 | Dai, Tan, Chen, Poor, **Delay-phase precoding for wideband THz massive MIMO** (arXiv 2102.05211) | IEEE **TWC** 21(9) 2022 | **1区** | **the TD/PS split itself — prior art for contribution A (THEORY §13)**. Also `[31]` in A1's own reference list |
-| A4 | **Joint delay-phase precoding under true-time-delay constraints in wideband sub-THz hybrid massive MIMO** (arXiv 2212.07484) | venue unconfirmed | — | **highest-priority read.** TTD *range/resolution constraints* — closest published work to our surviving claim |
+| A4 | Nguyen & Kim, **Joint delay-phase precoding under true-time-delay constraints in wideband sub-THz hybrid massive MIMO** (10.1109/TCOMM.2024.3402616; arXiv 2212.07484 is the preprint) | IEEE **TCOM** 72(10), Oct 2024 | **2区** (工程技术; check the year) | **READ — see THEORY §25.** Same AoSA structure; joint TTD **and** PS optimization under bounded per-TTD delay, explicitly against fixing the PS; closed-form **minimum-TTD count** for a target array gain, growing **linearly with B**. Far-field, squint *compensation*, no training — so it does not block the claim, but it owns "use the PS properly" as a principle |
 | A5 | Najjar, El-Absi, Kaiser (TTD resolution constraint) | IEEE **TWC** 23(7) 2024 | **1区** | derives `phi = 2 pi fc tau` for the finite-resolution motivation — prior art (THEORY §13) |
 | A6 | Qaid, Nasir, Al-Ahmadi, Liu, **A hardware-efficient hybrid beamforming architecture…** (10.1109/OJCOMS.2026.3695965) | IEEE **OJ-COMS** v7 2026 | **3区** | **the paper this project must beat.** AoSA grouped TTD, sector shifting, LS focusing, MF refinement — see THEORY §22 |
 
@@ -76,3 +76,24 @@ What is not in the map:
 **Priority read: A4** (arXiv 2212.07484). It is the closest published work to the
 surviving claim, and if it already treats sub-array-shared TTD with `fc`
 compensation under a delay-range constraint, the contribution narrows again.
+
+
+---
+
+## Update after reading A4 (THEORY §25)
+
+A4 is **IEEE TCOM 72(10), Oct 2024** — a stronger venue than A6, and it owns the
+joint-TTD-PS principle plus a min-TTD-count law. The surviving contribution is
+therefore an **application** of a known principle to a problem where it had not
+been applied, not a discovery:
+
+- **inherited**: the AoSA architecture (vendor practice); the delay-phase split
+  (A3, TWC 2022); the joint design principle and min-TTD law (A4, TCOM 2024); the
+  sectoring/coverage framework and the grouped-DDBS training problem (A6, 2026).
+- **remaining**: one architectural substitution inside A6's scheme, plus the
+  measured pilot law `K_min ~ P/1.19` and the offline `maxgap` design test —
+  with the **bandwidth-independence** of our law standing in deliberate contrast
+  to A4's `B`-linear TTD law.
+
+**Realistic target: 2-3区** (OJ-COMS-tier, or a solid 2区 such as TVT/TCOM if the
+execution is strong). Scope it that way from the start.

@@ -1387,3 +1387,121 @@ configuration and not a reconstruction of it.
 
 Until the re-run passes, **no comparison number may be quoted**, and §21.4's
 39%/31%/19% column stays unusable.
+
+---
+
+## 24. Gate: L=1 passes; L=2 exposes a contradiction inside their own paper
+
+Re-run after the §23 fixes, with Table 3 used verbatim:
+
+| L | K | O-cf | O-af | their Fig. 7 |
+|---|---|---|---|---|
+| 1 | 3 | **5.857** | **5.938** | ~6.5 |
+| 2 | 4 | 0.831 | 0.337 | ~5.0 |
+| 2 | 12 | 1.109 | 0.765 | ~5.0 |
+
+The unit test now reproduces `theta't = -31.797, theta'p = 28.400` exactly, and
+`alpha't = -0.5338` against their `-0.533`.
+
+### 24.1 The ungrouped path is validated
+
+L=1, K=3 gives **5.86-5.94 against their ~6.5, i.e. 90%**. Channel model, rate
+metric, operating point (`r` in [5,200] m, SNR 20 dB) and DDBS beam generation
+are all consistent with their setup. The residual 10% is plausibly the user
+distribution, which their text does not specify (uniform in `r` assumed here).
+
+**So the failure is specific to the grouped path**, which is what matters.
+
+### 24.2 Table 3's `alpha'p` contradicts their own equation (69)
+
+With Table 3's `alpha'p = 0.158` and `alpha't = -0.533`, the LS focus of (66)
+sweeps
+
+    alpha_m in [-0.3872, -0.3606]
+
+— the **entire pilot set points outside the target interval `[0.0025, 0.1]`**, so
+no user is reachable and the measured rate says nothing about the architecture.
+
+Their own (69) gives
+
+    U = (alpha_max - alpha_min)/(fc/fL - fc/fH) = 0.5809   ->   alpha_m in [+0.0033, +0.1008]
+
+which is exactly the target interval — by construction, since that is what (69)
+is for. Three independent confirmations that **0.158 is a typo**:
+
+1. (69), their own equation, gives 0.5809;
+2. 0.5809 sweeps precisely `[alpha_min, alpha_max]` while 0.158 sweeps nothing usable;
+3. 0.5809 is also the DD-BS baseline's own `alpha_p = 1859/3200 = 0.5809`, and
+   their `alpha't = -0.533` likewise matches the baseline's `-427/800 = -0.534`.
+
+So the pair is `(alpha't, alpha'p) = (-0.533, 0.581)` and Table 3 mis-set the
+second. Using (69) in preference to a table entry that the paper's own equation
+contradicts is a correction, not a tuning step — and both are now run, so the
+out-of-range behaviour of the table value is documented rather than hidden.
+
+`ojcoms_baseline.m` now runs the gate twice and prints the realized `alpha` sweep
+next to each rate. **If the eq-(69) block brings L=2 near 5.0, the baseline is
+validated and stage 2 may proceed.** If it does not, the remaining suspect is the
+`(theta'p, p_M)` split of §23.5, and the honest conclusion would be that their
+scheme is not reproducible from the published text.
+
+---
+
+## 25. PRIOR-ART FINDING #4 — Nguyen & Kim, IEEE TCOM 72(10), Oct 2024
+
+Full text verified. **IEEE Transactions on Communications, vol. 72, no. 10,
+Oct 2024, pp. 6633-…, DOI 10.1109/TCOMM.2024.3402616** (Dang Qua Nguyen, Taejoon
+Kim). Not a 2022 preprint — arXiv 2212.07484 is its early version; the published
+venue is TCOM 2024, a stronger venue than the OJ-COMS paper.
+
+### What it contains
+
+1. **The same AoSA structure**: "`Nt`-element ULA is divided into `M` subarrays
+   with `N = Nt/M` antennas per subarray."
+2. **Joint TTD **and** PS optimization under a bounded per-TTD delay**
+   (`0 <= t <= t_max`), explicitly against "the prior works that optimize TTD
+   values while **fixing the PS values**" (their Fig. 2a vs 2b). This is the
+   general principle whose special case is programming the PS with the
+   intra-sub-array `fc` term.
+3. **A minimum-TTD-count law** for a target array gain, in closed form, with the
+   finding that "**the number of TTDs linearly increases with respect to the
+   system bandwidth**".
+4. Delineates `(Nt, M, B, t_max)` for effective compensation — the same parameter
+   set as §13's delay-range analysis.
+
+### What it is not — and why the claim survives, narrowed again
+
+- **Far-field**, and **beam-squint COMPENSATION** (all subcarriers steered to one
+  direction). They separate themselves explicitly from the beam-split
+  **exploitation** camp: *"Unlike the beam squint compensation…, these works
+  exploit the beam squint effect to spread the beams across different OFDM
+  subcarriers simultaneously"* — citing near-field rainbow (Cui & Dai) as `[39]`.
+- No near-field curvature dimension, no beam **training**, no pilot-overhead law.
+
+So it does not block the claim. But it removes what was left of its framing: **"use
+the phase shifter properly instead of fixing it" is TCOM 2024's point**, in the far
+field, with a stronger optimization behind it. The claim must now be stated as an
+application, not a discovery:
+
+> OJ-COMS 2026 applies the fix-the-PS approach to near-field DDBS **training**
+> under sub-array sharing and reports an `L <= 2` ceiling as a consequence.
+> Applying the joint delay-phase principle (Nguyen & Kim TCOM 2024; Dai & Tan TWC
+> 2022) to that training problem removes the ceiling and extends useful sharing to
+> `L = 16`, with a pilot law `K_min ~ P/1.19` that — unlike their TTD-count law —
+> is **independent of bandwidth** (§21.1, measured over a 4x range of B).
+
+The bandwidth contrast is the sharpest remaining hook: their law scales with `B`
+because it is TTD-count-for-array-gain; ours does not because it is
+pilots-for-coverage-under-sharing. Two different laws, and the difference is
+explainable rather than coincidental.
+
+### Honest tier assessment
+
+Most of the framework is now inherited: the architecture (standard AoSA, vendor
+practice), the delay-phase split (Dai & Tan 2022), the joint design principle and
+min-TTD law (Nguyen & Kim 2024), the sectoring/coverage analysis and the grouped
+DDBS training problem itself (Qaid et al. 2026). What remains is one architectural
+substitution inside their scheme plus the measured laws around it. That is a
+**2-3区 contribution, realistically OJ-COMS-tier or a solid 2区** — not 1区. It
+should be scoped and written that way from the start rather than aimed high and
+cut down in review.
