@@ -1205,3 +1205,108 @@ sub-array-reference) compensation. Two outcomes:
 
 Until that check is done, **no number from arms C or D may be quoted anywhere.**
 `ddbs_beam_arch.m`'s docstring now carries this warning at the `ojcoms` case.
+
+---
+
+## 22. PRIOR-ART FINDING #3 — the OJ-COMS paper already contains most of this project's results
+
+Verified against the full text (IEEE OJ-COMS vol. 7, 2026, DOI 10.1109/OJCOMS.2026.3695965).
+
+### 22.1 §21.5's hypothesis is REFUTED — the `ojcoms` arm is faithful
+
+Their eqs (13)-(14), verbatim:
+
+    (13) v^TTD_m(theta't, alpha't)|n_s = (1/sqrt(Nt)) exp(-j k_m [ n_s L d theta't - n_s^2 L^2 d^2 alpha't ])
+    (14) v^PS_m (theta'p, alpha'p)|n   = (1/sqrt(Nt)) exp(-j k_c [ n   d   theta'p - n^2   d^2   alpha'p ])
+
+The TTD carries the **full `k_m`** on the sub-array-centre lattice; the PS carries
+**only** the DDBS phase parameters at `k_c`. **There is no `fc*tau` intra-group
+compensation term.** `ddbs_beam_arch`'s `ojcoms` case reproduces their architecture
+exactly, and the ~42 carrier cycles of intra-group spread are real, not a modelling
+error. My §21.5 guess ("their PS almost certainly carries the fc part") was wrong.
+
+They handle it not by compensating but by **accepting** it: the abstract states
+they "characterize how delay sharing reshapes DDBS behavior by **restricting the
+strong-gain region to a limited angular range/sector**", then cover the region with
+sector shifting plus distance interleaving.
+
+### 22.2 The overlap, with their equation numbers
+
+| their result | equation / location | what I had called it |
+|---|---|---|
+| "three pilots ... are **not sufficient**" under AoSA | abstract | §12/§14 finding 1 |
+| **LS effective focus** `theta_m = (kc/km) theta'p + rho_th theta't`, `alpha_m = (kc/km) alpha'p + rho_al alpha't`, `rho_th = L C1/S2`, `rho_al = L^2 C2/S4` | (29)-(31), Sec IV-B | **the recalibrated lookup — and in CLOSED FORM, no grid search** |
+| Dirichlet intra-sub-array factor `|sin u / u|`, `u_3dB ~ 1.39`, `Delta_delta_strong = 5.56/L`, "scales as **O(1/L)**" | (43)-(44) | §19-§20 "comb finer than the sub-array beamwidth `2/P`" |
+| **sector width** `W = 5.56 |S| / (L pi |theta't| xi_H^2)`, `S = theta'p + 2p/L` | (48), (53) | §16 equation (*) — the ratio law I declared refuted |
+| **pilot count** `N_sec = ceil(theta_tot / W)`, hence `∝ L |theta't|/|theta'p|` | (54) | `K_min ∝ P` |
+| `K_total = N_sec * K_alpha = 4*3 = 12` at `Nt=256, L=2` | Sec V, VII | my "K=12" headline |
+| `N_TTD = Nt/L`; Table 2 against 2560 / 266 / 140 / 10 / 3 | Sec V-D, Table 2 | my hardware-vs-overhead table |
+| **selection of L** as the hardware-overhead-performance knob | Sec V-E | my `(P, K)` frontier |
+
+**That is essentially the whole contribution set assembled in §12-§21.** It must be
+treated as prior art, cited, and not re-claimed in any form.
+
+### 22.3 It also shows where I went wrong, twice, in the same place
+
+- **§16's ratio equation was RIGHT.** `K >= Theta_req P |theta_t| / (4 eta |theta_p|)`
+  is their (53)-(54) with `eta` supplied rigorously by the Dirichlet 3 dB solution
+  `u_3dB = 1.39` rather than my hand-waved 0.443.
+- **§18's "refutation" of it was an ARTIFACT of my own training design.**
+  `decouple_theta` varied `theta_t` and `theta_p` while shifting pilots on a
+  **uniform `theta_t` comb** — it never re-centred `theta'p` per pilot (their
+  **sector shifting**, (62)-(64)) and never interleaved in `alpha` (their
+  **distance interleaving**, (71)). With the sectors left stacked on top of each
+  other, shrinking `theta_t` cannot help, so the ratio law looked dead. The same
+  omission explains `nonuniform_comb`'s failure, which §20.4 correctly diagnosed as
+  1-D angular binning against a 2-D `(theta, alpha)` requirement without connecting
+  it to the missing second pilot dimension.
+- Consistently, `kspace_map` scaled `theta_t` and `theta_p` **together**, holding
+  their ratio fixed — so its finding that `s` does not matter is exactly what the
+  ratio law predicts, not evidence against it.
+
+### 22.4 What actually survives — one architectural difference, worth checking properly
+
+Their PS (14) is programmed with `k_c(n d theta'p - n^2 d^2 alpha'p)`. The `shared`
+arm programs the **same hardware** — one TTD per sub-array, one frequency-flat PS
+per antenna — with that term **plus the exact per-antenna `2 pi fc tau_n`**. No
+extra components, no extra resolution: only a different value written to a phase
+shifter that already exists.
+
+The intra-group residual changes from `2 pi f_m (tau_g - tau_n)` to
+`2 pi (f_m - fc)(tau_g - tau_n)`. In their own derivation, (46) reads
+`delta = pi xi_m theta't + 2 pi p / L`; under compensation the `pi xi_m` becomes
+`pi (xi_m - 1) = pi (f_m - fc)/fc`, so at the band edge
+
+    xi_H = 1.083   ->   xi_H - 1 = 0.083          a factor of ~13 at B/fc = 1/6
+
+Through (52)-(54) that is a **~13x wider sector and ~13x fewer sector shifts**.
+Their `L=2` operating point needs `N_sec=4, K_alpha=3, K_total=12`; the same
+argument would put the compensated architecture at `N_sec=1`, i.e. `K_total = 3`.
+At `L=8` their formula gives roughly `N_sec ~ 16, K_total ~ 48`, against a measured
+`K_min = 7` for the compensated arm.
+
+Measured, at equal `(N_TTD, K)` (§21.4): 39% → 99%, 31% → 97%, 19% → 97%.
+
+**But those numbers do NOT compare against their scheme.** Arm C is their
+architecture driven by *my* uniform-comb training, not their sector-shifted,
+distance-interleaved, LS-refined procedure. Quoting 19% vs 97% against their paper
+would be a false comparison and must not be done.
+
+### 22.5 Required next step, and nothing may be claimed before it
+
+Implement **their full scheme** as the baseline — (29)-(31) LS focusing, (53)-(54)
+sector shifting, (62)-(64) sector parameters, (71) distance interleaving — at their
+operating point (`Nt=256, L=2, N_sec=4, K_alpha=3, K_total=12`), and reproduce their
+reported performance. Only then add the fc-compensated PS and compare at equal
+`(N_TTD, K_total)`. Two outcomes:
+
+- **compensation reduces `K_total` substantially at equal `N_TTD`** (the ~13x
+  argument, testable directly through their (53)) → a genuine, narrow, defensible
+  contribution: *the same AoSA hardware, reprogrammed, needs far fewer pilots* —
+  with the delay-phase split itself cited to Dai/Tan TWC 2022 (§13) and the
+  sector/coverage framework cited to this paper;
+- **it does not** → this project has no publishable increment over OJ-COMS 2026,
+  and that conclusion should be reached quickly rather than slowly.
+
+Everything in §12-§21 stays valid as *measurement*; what changes is that almost
+none of it is *novel*, and the write-up must be rebuilt around 22.4 alone.
