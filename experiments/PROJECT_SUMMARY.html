@@ -336,14 +336,10 @@
     <p style="margin-top:10px"><b>16 个 TTD（比 DD-BS 少 16 倍）在 K=16 下拿到 4.838 bit/s/Hz——高于 baseline 自身
     256 TTD、K=3 的 4.748。</b> 固定 (N<sub>TTD</sub>, K) 横着读，<span class="m">E−B</span> 隔离的是<b>判决规则</b>：
     同一套硬件，29% → 97%。重标定查找表承担了大部分增益，而 P/K 定律规定了它什么时候被允许生效。</p>
-    <div class="red"><b>⚠ OJ-COMS 对比臂暂停使用，一个数都不能引。</b>
-    「他们的架构 + 我们的重标定」这条臂在每个格子都<b>低于</b>「他们的架构 + 设计表」（7% vs 19%、11% vs 31%、30% vs 39%）。
-    重标定抬升了其他所有配置，却唯独让这条变差——这是<b>模型信号，不是关于他们架构的结论</b>。
-    代码里该臂不含 fc 补偿，残差是完整的 <span class="m">2πf<sub>m</sub>(τ<sub>g</sub>−τ<sub>n</sub>)</span>，
-    在<b>包括 fc 在内的每个子载波</b>上都有约 42 个载波周期的组内展宽，子阵根本不相干，
-    <b>真实 AoSA 不可能这样工作，否则他们发不出来</b>。
-    <b>下一步必须去核对他们的原文</b>：每天线相移项里是否含 <span class="m">fc·τ</span>（或等价的子阵参考）补偿。
-    若含 → 他们的架构<b>就等于</b>本文的 shared 臂，C/D 两臂删除，对比退化为 B vs E，贡献表述为<b>算法 + 设计定律</b>而非阵列。</div>
+    <div class="red"><b>⚠ 表中 19%/31%/39% 一列不得用于与 OJ-COMS 对比。</b>
+    原文已核实（见 §07）：该臂忠实复现了他们的<b>架构</b>，但驱动它的是本项目的均匀梳子训练，
+    <b>不是</b>他们的扇区偏移 + 距离交织 + LS 精化流程。拿它去对比等于打稻草人。
+    要主张任何东西，必须先按原文实现他们的完整方案并复现其性能。</div>
   </div>
 </section>
 
@@ -369,18 +365,49 @@
 </section>
 
 <section>
-  <div class="sh"><span class="n">07</span><h2>竞品与红线</h2><span class="r"></span></div>
+  <div class="sh"><span class="n">07</span><h2>先验技术判定与红线</h2><span class="r"></span></div>
+  <div class="red" style="margin-bottom:14px;font-size:14.5px">
+    <b>先验技术判定 #3（已核实全文，OJ-COMS v7 2026, DOI 10.1109/OJCOMS.2026.3695965）：
+    本项目 §12–§21 的成果集，绝大部分已在该文中以闭式给出。</b>
+  </div>
+  <div class="scroll" style="margin-bottom:14px"><table>
+    <thead><tr><th>他们的结果</th><th>式号</th><th>我曾称之为</th></tr></thead>
+    <tbody>
+      <tr><td>「三个导频在 AoSA 下<b>不够用</b>」</td><td class="n">摘要</td><td>发现 ①</td></tr>
+      <tr class="hi"><td><b>LS 有效焦点</b> θ<sub>m</sub>=(k<sub>c</sub>/k<sub>m</sub>)θ′<sub>p</sub>+ρ<sub>θ</sub>θ′<sub>t</sub></td><td class="n">(29)–(31)</td><td><b>重标定查找表——而且是闭式，不用网格搜索</b></td></tr>
+      <tr><td>子阵 Dirichlet 因子 |sin u/u|，u<sub>3dB</sub>≈1.39，Δδ=5.56/L，<b>O(1/L)</b></td><td class="n">(43)–(44)</td><td>「梳子要比子阵波束 2/P 细」</td></tr>
+      <tr class="hi"><td><b>扇区宽度</b> W = 5.56|S|/(Lπ|θ′<sub>t</sub>|ξ<sub>H</sub>²)</td><td class="n">(48),(53)</td><td>§16 的比值方程——<b>那个我误判为已证伪的</b></td></tr>
+      <tr class="hi"><td><b>导频数</b> N<sub>sec</sub>=⌈θ<sub>tot</sub>/W⌉ ∝ L|θ′<sub>t</sub>|/|θ′<sub>p</sub>|</td><td class="n">(54)</td><td>K<sub>min</sub> ∝ P</td></tr>
+      <tr><td>K<sub>total</sub>=N<sub>sec</sub>·K<sub>α</sub>=4×3=12（N<sub>t</sub>=256, L=2）</td><td class="n">第 V,VII 节</td><td>「K=12」标题数字</td></tr>
+      <tr><td>N<sub>TTD</sub>=N<sub>t</sub>/L；对照 2560/266/140/10/3 的开销表</td><td class="n">表 2</td><td>硬件–开销表</td></tr>
+      <tr><td>把 L 当作硬件–开销–性能的设计旋钮</td><td class="n">第 V-E 节</td><td>(P,K) 边界</td></tr>
+    </tbody>
+  </table></div>
+  <div class="card">
+    <p><b>还剩下什么：一处架构差异。</b>他们的相移器 (14) 只写入
+    <span class="m">k<sub>c</sub>(n·d·θ′<sub>p</sub> − n²d²α′<sub>p</sub>)</span>；本项目的 shared 臂在
+    <b>同一套硬件</b>上额外写入精确的 <span class="m">2πf<sub>c</sub>τ<sub>n</sub></span>——
+    不多一个器件、不多一位分辨率，只是给一个已经存在的相移器写了不同的值。
+    组内残差于是从 <span class="m">2πf<sub>m</sub>(τ<sub>g</sub>−τ<sub>n</sub>)</span> 变成
+    <span class="m">2π(f<sub>m</sub>−f<sub>c</sub>)(τ<sub>g</sub>−τ<sub>n</sub>)</span>。
+    代入<b>他们自己的</b> (46)：<span class="m">πξ<sub>m</sub> → π(ξ<sub>m</sub>−1)</span>，
+    在 B/f<sub>c</sub>=1/6 处 <b>1.083 → 0.083，约 13 倍</b>，经 (52)–(54) 即扇区宽 13 倍、扇区偏移数 1/13。</p>
+    <div class="note"><b>下一步（在此之前不得主张任何东西）：</b>按原文实现他们的完整方案——
+    (29)–(31) LS 精化、(53)–(54) 扇区偏移、(62)–(64) 扇区参数、(71) 距离交织——
+    在他们的工作点（N<sub>t</sub>=256, L=2, N<sub>sec</sub>=4, K<sub>α</sub>=3, K<sub>total</sub>=12）复现其性能，
+    <b>然后</b>再加上 fc 补偿，在同 (N<sub>TTD</sub>, K<sub>total</sub>) 下对比。
+    若 K<sub>total</sub> 显著下降 → 一个窄但站得住的贡献；若不下降 → 本项目相对 OJ-COMS 2026 无可发表增量，
+    那也该<b>快点</b>知道而不是慢慢知道。</div>
+  </div>
   <div class="card">
     <ul>
-      <li><b>OJ-COMS 2026（Qaid 等）</b>——AoSA/分组 TTD，降的是 TTD <b>数量</b>，但假设组内时延理想，且未给出 K–TTD 边界。<b>必须在同 N<sub>TTD</sub>、同 K 下直接对比。</b></li>
       <li><b>Najjar 等 TWC 2024</b>——TTD 分辨率约束，远场，量程 ~ ps 级。结论相反是因为受孔径限制。</li>
       <li><b>Dai/Tan TWC 2022</b>——delay-phase precoding 的分解原始出处，是 baseline 自己的参考文献 [31]。</li>
       <li><b>器件现实</b>：文献中可实现 TTD 量程 1.47 ps – 508 ps；DDBS 训练波形需 <b>140 ns</b>，超出最好器件约 280 倍。baseline 从未给出这个数字。</li>
     </ul>
-    <div class="red"><b>论文必须自己先说的三件事：</b>
+    <div class="red"><b>还必须自己先说的两件事：</b>
     ① K=12 已高于近场 rainbow 的 10 个导频（但 TTD 少 8 倍）；
-    ② 判据阈值是<b>软</b>的（1.14 → 98%，1.33 → 73%），别写成硬门限；
-    ③ Θ 常数与 K<sub>min</sub>/P ≈ 0.875 目前只在 P=8 精确测得。</div>
+    ② 判据阈值是<b>软</b>的（P/K=1.143 → 99%，1.231 → 78%），别写成硬门限。</div>
   </div>
 </section>
 
@@ -402,8 +429,8 @@
   <div class="sh"><span class="n">09</span><h2>剩余工作</h2><span class="r"></span></div>
   <div class="card">
     <ul>
-      <li><span class="chip bad">阻塞中</span> <b>核对 OJ-COMS 原文的相移项</b>是否含 fc 补偿。
-      在这件事清楚之前，架构层面的贡献表述无法定稿——见上方红框。</li>
+      <li><span class="chip bad">最高优先级</span> <b>实现 OJ-COMS 的完整方案作为真基线</b>并在其工作点复现，
+      然后叠加 fc 补偿做同 (N<sub>TTD</sub>, K<sub>total</sub>) 对比。这一步决定本项目是否还有可发表增量。</li>
       <li><b>标准曲线</b>：速率–SNR、速率–N<sub>TTD</sub>，以及重标定 / 梳子修正的消融。</li>
       <li><b>硬件成本核算表</b>：元件数 × 量程 × 所需比特，对照可实现器件（1.47 ps – 508 ps）。</li>
       <li><b>Θ 的闭式</b>：P/K* = 1.19 ± 0.04 目前是实测常数。可选——maxgap 判据已能离线算出边界，闭式是加分不是必需。</li>
