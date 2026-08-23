@@ -10,7 +10,16 @@ function [w, n_ttd, lsb_used] = ddbs_beam_arch(Nt,B,fc,M,d,theta1,theta2,alpha1,
 %             at fc). This is a GENERIC shared-TTD model -- it is NOT a
 %             reproduction of the OJ-COMS AoSA scheme, which additionally
 %             redesigns the training procedure.
-%   'ojcoms' literal OJ-COMS AoSA form (their eqs (13)-(14)): TTD carries the
+%   'ojcoms' UNSAFE -- DO NOT QUOTE. See THEORY.md sec 21.5. As coded, the
+%            intra-group residual is 2*pi*f_m*(tau_g - tau_n), the FULL delay
+%            difference rather than the (f_m - fc) part, so the sub-array never
+%            coheres (~42 carrier cycles of spread at EVERY subcarrier, fc
+%            included) and measured rates land at 6-19% of ideal. A real AoSA
+%            cannot work that way or OJ-COMS could not have published it, so
+%            their PS almost certainly carries the fc part of the intra-group
+%            delay -- which would make their architecture identical to 'shared'.
+%            Verify against their text before using this arm for anything.
+%            literal OJ-COMS AoSA form (their eqs (13)-(14)): TTD carries the
 %            full 2*pi*f_m*tau on the sub-array-centre grid; the PS is the plain
 %            per-antenna DDBS term and does NOT compensate the intra-group delay.
 %            Note their full scheme ALSO redesigns the DDBS parameters and adds

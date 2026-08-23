@@ -119,9 +119,9 @@
 
   <div class="kpis">
     <div class="kpi"><div class="v">42%</div><div class="k">32 个 TTD、原参数下的速率（占理想）</div></div>
-    <div class="kpi"><div class="v">100%</div><div class="k">同样 32 个 TTD，导频梳子修正后</div></div>
-    <div class="kpi"><div class="v">K·N<sub>TTD</sub>≈N<sub>t</sub></div><div class="k">导频数 × TTD 数 的交换律</div></div>
-    <div class="kpi"><div class="v">20/20</div><div class="k">离线几何判据的预测命中</div></div>
+    <div class="kpi"><div class="v">16×</div><div class="k">TTD 减少倍数，速率仍高于 baseline 自身工作点</div></div>
+    <div class="kpi"><div class="v">K·N<sub>TTD</sub></div><div class="k">≈ 0.875·N<sub>t</sub>：导频数 × TTD 数 的交换律</div></div>
+    <div class="kpi"><div class="v">44/44</div><div class="k">离线几何判据的预测命中，零误判</div></div>
   </div>
 </header>
 
@@ -180,6 +180,12 @@
       <text class="lbl" x="568" y="244" text-anchor="middle" fill="var(--ink2)">全都 52–59%</text>
     </svg>
   </div>
+  <div class="note" style="border-left-color:var(--ok);background:var(--ok-bg)">
+  <b>跨 P 验证通过——这是全项目最吃重的一次验证。</b>主曲线声称 P 和 K 只通过比值起作用，
+  于是特意安排了两对<b>来自不同 P 但 P/K 完全相同</b>的配置：
+  <br>&nbsp;&nbsp;<span class="m">P/K = 1.333</span>：(P=4,K=3) → <b>76%</b> vs (P=8,K=6) → <b>72%</b>
+  <br>&nbsp;&nbsp;<span class="m">P/K = 1.143</span>：(P=8,K=7) → <b>99%</b> vs (P=16,K=14) → <b>101%</b>
+  <br>两对都在蒙特卡洛噪声内一致（±3 点）。<b>主曲线不是 P=8 那次扫描的巧合</b>——这才是「只引一条曲线而不是每个 P 一张表」的许可证。</div>
   <div class="note"><b>最右侧那一簇是全表最重要的数据点。</b>在 Δ·P/2 = 2 处，K 从 4 变到 16——<b>导频数量翻两番</b>——速率纹丝不动，全在 52–59%。
   而 K=8 配上正确齿距是 100%，K=16 配上错误齿距只有 58%。<b>导频数量不是变量。</b></div>
 </section>
@@ -204,12 +210,13 @@
       <text class="al" x="546" y="266" text-anchor="middle">100</text>
       <text class="al" x="329" y="285" text-anchor="middle">最大覆盖空洞 ÷ 阵列波束宽 (2/N<sub>t</sub>)</text>
 
-      <line x1="185" y1="30" x2="185" y2="250" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 4"/>
-      <text class="lbl" x="192" y="243" fill="var(--accent2)">判据阈值 = 1</text>
+      <line x1="271" y1="30" x2="271" y2="250" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 4"/>
+      <text class="lbl" x="278" y="243" fill="var(--accent2)">判据阈值 ≈ 3</text>
       <g fill="var(--ok)">
         <circle cx="90" cy="51" r="4.5"/><circle cx="90" cy="54" r="4.5"/><circle cx="90" cy="51" r="4.5"/>
         <circle cx="144" cy="59" r="4.5"/><circle cx="144" cy="56" r="4.5"/>
         <circle cx="144" cy="54" r="4.5"/><circle cx="144" cy="56" r="4.5"/>
+        <circle cx="176" cy="59" r="4.5"/><circle cx="211" cy="56" r="4.5"/><circle cx="268" cy="62" r="4.5"/>
       </g>
       <g fill="var(--bad)">
         <circle cx="356" cy="139" r="4.5"/>
@@ -218,13 +225,15 @@
         <circle cx="483" cy="100" r="4.5"/><circle cx="506" cy="121" r="4.5"/>
         <circle cx="546" cy="177" r="4.5"/><circle cx="546" cy="153" r="4.5"/>
         <circle cx="566" cy="232" r="4.5"/><circle cx="566" cy="203" r="4.5"/>
+        <circle cx="276" cy="124" r="4.5"/><circle cx="420" cy="130" r="4.5"/><circle cx="356" cy="141" r="4.5"/>
       </g>
-      <text class="lbl" x="117" y="80" text-anchor="middle" fill="var(--ok)">全部 ≥ 100%</text>
-      <text class="lbl" x="470" y="72" text-anchor="middle" fill="var(--bad)">全部 ≤ 86%</text>
+      <text class="lbl" x="150" y="86" text-anchor="middle" fill="var(--ok)">通过：全部 ≤ 2.9</text>
+      <text class="lbl" x="450" y="72" text-anchor="middle" fill="var(--bad)">失败：全部 ≥ 3.2</text>
     </svg>
   </div>
   <div class="card" style="margin-top:12px">
-    <p><b>空洞 ≤ 1 个波束宽 ⇒ 全部 ≥100%；≥ 8 个 ⇒ 全部 ≤86%。零重叠。</b>
+    <p><b>每个通过的配置空洞 ≤ 2.9 个波束宽，每个失败的 ≥ 3.2。44 次评估零误判。</b>
+    最近的两点相邻，所以阈值只能写成「≈3」并带上这个区间——早先写的「≤1」是当时 1–5 区间没有数据造成的。
     它把「这套系统能共享到什么程度」从一个蒙特卡洛速率问题，变成对一张离线表的一次几何检查。</p>
     <div class="red"><b>已修复的统计量 bug。</b>早先版本只在焦点之间求差，因此「密集但很窄」的焦点簇会读出极小的空洞而蒙混过关
     （K=4/Δ=0.125 读 0.6 却只有 41%）。修正为先用区域边界夹住区间再求差，两个反例现在都读 128.7。
@@ -266,18 +275,18 @@
 
   <div class="two">
     <div class="fig">
-      <h3>B · 交换律的四个 P</h3>
-      <p class="cap">最小导频数随共享因子线性增长。</p>
+      <h3>B · 交换律，单位步长实测</h3>
+      <p class="cap">K<sub>min</sub> = ⌈P/1.19⌉，三个 P 全中。</p>
       <div class="scroll"><table style="min-width:0">
         <thead><tr><th class="n">P</th><th class="n">N<sub>TTD</sub></th><th class="n">K<sub>min</sub></th></tr></thead>
         <tbody>
-          <tr><td class="n">2</td><td class="n">128</td><td class="n">3 ᵃ</td></tr>
-          <tr><td class="n">4</td><td class="n">64</td><td class="n">≤5</td></tr>
+          <tr><td class="n">4</td><td class="n">64</td><td class="n">4</td></tr>
           <tr class="hi"><td class="n">8</td><td class="n">32</td><td class="n">7</td></tr>
-          <tr><td class="n">16</td><td class="n">16</td><td class="n">≤18</td></tr>
+          <tr><td class="n">16</td><td class="n">16</td><td class="n">14</td></tr>
         </tbody>
       </table></div>
-      <p class="cap" style="margin-top:8px">ᵃ 受 K≥3 下限限制，非共享所致。P=4/16 待细扫确认。</p>
+      <p class="cap" style="margin-top:8px">交点夹在 P/K = 1.143（过）与 1.231（挂）之间。<br>
+      <b>K · N<sub>TTD</sub> ≈ 0.875·N<sub>t</sub> = 224</b>（P≥8）。</p>
     </div>
     <div class="fig">
       <h3>C · 对带宽不敏感</h3>
@@ -307,6 +316,34 @@
     </table></div>
     <p style="margin-top:10px">总延迟线预算（元件数 × 量程）：<b>256×134.8 ns → 32×33.7 ns，降 32 倍</b>。
     这直接打在「140 ns 的 TTD 器件做不出来」这个 baseline 从未给出的数字上。</p>
+  </div>
+
+  <div class="fig" style="margin-top:12px">
+    <h3>E · 同 N<sub>TTD</sub>、同 K 的正面对比</h3>
+    <p class="cap">百分比对齐的是<b>同一个 K</b> 下的满 TTD 上界（K 越多，上界本身也越高，必须同 K 比）。</p>
+    <div class="scroll"><table>
+      <thead><tr><th class="n">N<sub>TTD</sub></th><th class="n">K</th><th class="n">P/K</th>
+        <th class="n">A 满TTD</th><th class="n">B 共享·设计表</th><th class="n">E 共享·重标定</th></tr></thead>
+      <tbody>
+        <tr><td class="n">64</td><td class="n">3</td><td class="n">1.33</td><td class="n">4.748</td><td class="n">2.031 · 43%</td><td class="n">3.527 · 74%</td></tr>
+        <tr class="hi"><td class="n">64</td><td class="n">4</td><td class="n">1.00</td><td class="n">4.831</td><td class="n">2.829 · 59%</td><td class="n">4.800 · 99%</td></tr>
+        <tr><td class="n">32</td><td class="n">3</td><td class="n">2.67</td><td class="n">4.748</td><td class="n">0.604 · 13%</td><td class="n">1.841 · 39%</td></tr>
+        <tr class="hi"><td class="n">32</td><td class="n">8</td><td class="n">1.00</td><td class="n">4.918</td><td class="n">1.680 · 34%</td><td class="n">4.793 · 97%</td></tr>
+        <tr><td class="n">16</td><td class="n">8</td><td class="n">2.00</td><td class="n">4.918</td><td class="n">0.917 · 19%</td><td class="n">3.124 · 64%</td></tr>
+        <tr class="hi"><td class="n">16</td><td class="n">16</td><td class="n">1.00</td><td class="n">4.968</td><td class="n">1.462 · 29%</td><td class="n">4.838 · 97%</td></tr>
+      </tbody>
+    </table></div>
+    <p style="margin-top:10px"><b>16 个 TTD（比 DD-BS 少 16 倍）在 K=16 下拿到 4.838 bit/s/Hz——高于 baseline 自身
+    256 TTD、K=3 的 4.748。</b> 固定 (N<sub>TTD</sub>, K) 横着读，<span class="m">E−B</span> 隔离的是<b>判决规则</b>：
+    同一套硬件，29% → 97%。重标定查找表承担了大部分增益，而 P/K 定律规定了它什么时候被允许生效。</p>
+    <div class="red"><b>⚠ OJ-COMS 对比臂暂停使用，一个数都不能引。</b>
+    「他们的架构 + 我们的重标定」这条臂在每个格子都<b>低于</b>「他们的架构 + 设计表」（7% vs 19%、11% vs 31%、30% vs 39%）。
+    重标定抬升了其他所有配置，却唯独让这条变差——这是<b>模型信号，不是关于他们架构的结论</b>。
+    代码里该臂不含 fc 补偿，残差是完整的 <span class="m">2πf<sub>m</sub>(τ<sub>g</sub>−τ<sub>n</sub>)</span>，
+    在<b>包括 fc 在内的每个子载波</b>上都有约 42 个载波周期的组内展宽，子阵根本不相干，
+    <b>真实 AoSA 不可能这样工作，否则他们发不出来</b>。
+    <b>下一步必须去核对他们的原文</b>：每天线相移项里是否含 <span class="m">fc·τ</span>（或等价的子阵参考）补偿。
+    若含 → 他们的架构<b>就等于</b>本文的 shared 臂，C/D 两臂删除，对比退化为 B vs E，贡献表述为<b>算法 + 设计定律</b>而非阵列。</div>
   </div>
 </section>
 
@@ -365,11 +402,12 @@
   <div class="sh"><span class="n">09</span><h2>剩余工作</h2><span class="r"></span></div>
   <div class="card">
     <ul>
-      <li><b>补齐 K<sub>min</sub> 曲线</b>：P=4 与 P=16 用单位步长细扫，确认 K<sub>min</sub>/P ≈ 0.875 是否跨 P 成立。</li>
-      <li><b>重跑 kspace_map / diag_shared_mechanism</b>：用修正后的 cov_gap 重新打分，把判据命中数补回一个可引用的总数。</li>
-      <li><b>与 OJ-COMS AoSA 直接对比</b>：同 N<sub>TTD</sub>、同 K。这是审稿人第一个会问的。</li>
+      <li><span class="chip bad">阻塞中</span> <b>核对 OJ-COMS 原文的相移项</b>是否含 fc 补偿。
+      在这件事清楚之前，架构层面的贡献表述无法定稿——见上方红框。</li>
       <li><b>标准曲线</b>：速率–SNR、速率–N<sub>TTD</sub>，以及重标定 / 梳子修正的消融。</li>
-      <li><b>硬件成本核算表</b>：元件数 × 量程 × 所需比特，对照可实现器件。</li>
+      <li><b>硬件成本核算表</b>：元件数 × 量程 × 所需比特，对照可实现器件（1.47 ps – 508 ps）。</li>
+      <li><b>Θ 的闭式</b>：P/K* = 1.19 ± 0.04 目前是实测常数。可选——maxgap 判据已能离线算出边界，闭式是加分不是必需。</li>
+      <li><s>补齐 K<sub>min</sub>（P=4/16 单位步长）</s> · <s>重跑 cov_gap 打分</s> · <s>OJ-COMS 同 N<sub>TTD</sub> 同 K 对比</s> —— 已完成</li>
     </ul>
   </div>
 </section>

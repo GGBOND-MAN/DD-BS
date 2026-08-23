@@ -1089,3 +1089,119 @@ resolution in coverage.
 | 1. Does DD-BS's architecture/algorithm survive limited TTD? | **No.** 32 TTDs at baseline parameters → 42-43% of ideal. |
 | 2. Design something that approaches ideal under limited TTD | **Yes, and the cost is now exactly characterized.** (i) recalibrated lookup — free, algorithm-only, and *necessary*: 85% of foci move by more than a grating step; (ii) pilot comb at `Delta <= 2/P`, i.e. `K ~ P`. No cheaper placement exists (§20.4). |
 | 3. Abandon DD-BS for a new architecture | **Closed as posed.** The `theta_t` offset is load-bearing (§16.2) and the sweep cannot be re-centred away; the sharing limit is a sub-array-beamwidth property, not a parameter choice. |
+
+---
+
+## 21. The master curve holds across P; the criterion threshold is ~3, not 1; the OJ-COMS arm is unsafe
+
+### 21.1 CONFIRMED — rate is a function of `P/K` alone, across a 4x range of P
+
+`kmin_fine.m` was built so that two pairs of cells, measured at **different P**,
+land on exactly the same `P/K`. The master curve says they must give the same rate.
+
+| `P/K` | cell | rate | cell | rate | agreement |
+|---|---|---|---|---|---|
+| 1.333 | (P=4, K=3) | **76%** | (P=8, K=6) | **72%** | 4 pts |
+| 1.143 | (P=8, K=7) | **99%** | (P=16, K=14) | **101%** | 2 pts |
+
+Both agree inside Monte-Carlo noise (N_iter=30, ~±3 pts). **The master curve is
+not an artifact of the P=8 sweep it was built from.** This is the single most
+load-bearing validation in the project: it is what licenses quoting one curve
+instead of one table per P.
+
+### 21.2 `K_min = ceil(P/1.19)` — three for three
+
+| P | K=… fails | K=… passes | `K_min` | `K_min/P` | `K*N_TTD` |
+|---|---|---|---|---|---|
+| 4 | 3 (76%) | **4** (100%) | 4 | 1.000 | 256 |
+| 8 | 6 (72%) | **7** (99%) | 7 | 0.875 | 224 |
+| 16 | 13 (78%) | **14** (101%) | 14 | 0.875 | 224 |
+
+The crossing is bracketed between `P/K = 1.143` (passes) and `1.231` (fails), so
+the threshold is **`P/K* = 1.19 +/- 0.04`**, tighter than §20's 1.14-1.33 bracket.
+`K_min = ceil(P/1.19)` reproduces all three. My registered prediction
+`ceil(P/1.14)` gave 4 / 8 / 15 and was **off by one at P=8 and P=16** — the
+constant was slightly too small, which is exactly what a unit-step scan is for.
+
+    K_min = ceil(P / 1.19)        K * N_TTD ~ 0.875 * Nt = 224   (P >= 8)
+
+P=4's ratio of 1.000 is the ceiling rounding up from 3.36, not a different law.
+
+### 21.3 Criterion threshold corrected: `gap <~ 3` beamwidths, not 1
+
+The new cells put four points in the previously empty 1-5 band, and they move the
+boundary:
+
+| gap/BW | 0.3-0.9 | **1.4** | **2.9** | **3.2** | 5.2 | 8.9-10.1 | >20 |
+|---|---|---|---|---|---|---|---|
+| rate | 95-103% | **101%** | **99%** | **78%** | 80% | 72-89% | 41-64% |
+
+Every pass has `gap <= 2.9`; every fail has `gap >= 3.2`. **Threshold ~3, still
+zero misclassifications** — but the two nearest points are adjacent, so the
+bracket is tight and the paper must quote `~3` with that bracket rather than a
+round number. §16's "<= 1" was an artifact of having no data between 1 and 5.
+
+Tally with the corrected statistic: `pilot_spacing_map` 20 + `kspace_map` 16 +
+`kmin_fine` 8 = **44 evaluations, zero misclassifications**. Two of those
+duplicate a cell measured by another script and agree to within one point
+(K=6 s=1: 72% vs 73%; K=12 s=1: 101% vs 101%) — a free reproducibility check.
+
+`kspace_map` and `diag_shared_mechanism` re-ran unchanged apart from the `span`
+column (1.04 → 1.00, a cosmetic change in the `cov` formula), confirming the
+§19.2 expectation that baseline-comb configurations were never affected by the bug.
+
+### 21.4 Head-to-head — arm E dominates, at every equal-hardware, equal-overhead cell
+
+`compare_ojcoms.m`, N_iter=30. Percentages are against arm A **at the same K**.
+
+| N_TTD | K | `P/K` | A full | B shared/designed | C ojcoms/designed | D ojcoms/recal | **E shared/recal** |
+|---|---|---|---|---|---|---|---|
+| 64 | 3 | 1.33 | 4.748 | 2.031 (43%) | 1.588 (33%) | 1.344 (28%) | 3.527 (74%) |
+| 64 | 4 | 1.00 | 4.831 | 2.829 (59%) | 1.887 (39%) | 1.428 (30%) | **4.800 (99%)** |
+| 32 | 3 | 2.67 | 4.748 | 0.604 (13%) | 0.642 (14%) | 0.387 (8%) | 1.841 (39%) |
+| 32 | 8 | 1.00 | 4.918 | 1.680 (34%) | 1.528 (31%) | 0.520 (11%) | **4.793 (97%)** |
+| 16 | 8 | 2.00 | 4.918 | 0.917 (19%) | 0.565 (11%) | 0.292 (6%) | 3.124 (64%) |
+| 16 | 16 | 1.00 | 4.968 | 1.462 (29%) | 0.934 (19%) | 0.330 (7%) | **4.838 (97%)** |
+
+The headline that survives every caveat below:
+
+> **16 TTDs (16x fewer than DD-BS) at K=16 deliver 4.838 bit/s/Hz — above the
+> baseline's own 256-TTD, K=3 operating point of 4.748.**
+
+`E - B` at fixed (N_TTD, K) isolates the **decision rule** on identical hardware:
+29% → 97% at 16 TTDs. The recalibrated lookup carries most of the gain, and the
+`P/K` law says when it is allowed to.
+
+### 21.5 STOP — the `ojcoms` arm is unsafe and must not be published as it stands
+
+Arm D is **worse than arm C at every cell** (7% vs 19%, 11% vs 31%, 30% vs 39%):
+recalibration, which lifts every other configuration, *degrades* this one. That is
+a signal about the model, not a result about their architecture.
+
+Root cause in the code: with no fc compensation, the `ojcoms` intra-group residual
+is `2*pi*f_m*(tau_g - tau_n)` — the **full** delay difference, not the
+`(f_m - fc)` part. At the P=8 frontier that is ~42 carrier cycles of spread **at
+every subcarrier including fc**, so the sub-array never coheres, the beam has no
+focus to find, and `actual_focus` returns noise — which is worse to decode against
+than a coherent-but-wrong designed table.
+
+**A real AoSA cannot work that way, or OJ-COMS would not have published it.**
+Almost certainly their phase shifters carry the `fc` part of the intra-group delay,
+which makes their architecture **identical to the `shared` arm** — in which case
+arms C and D are a strawman and must be deleted.
+
+**Action required before any comparison goes in the paper**: check the OJ-COMS
+text for whether the per-antenna PS term includes an `fc*tau` (or equivalent
+sub-array-reference) compensation. Two outcomes:
+
+- **it does** → arms C/D are deleted; their architecture *is* arm B/E's hardware,
+  and the comparison becomes B vs E: same array, their decision rule vs ours,
+  29% → 97%. The contribution is then **the algorithm and the design law**, not
+  the array — a narrower but entirely defensible claim, and the one the data
+  actually supports.
+- **it does not** → arms C/D stand, but the paper must then explain how their
+  published results are obtained despite the decoherence, which is a much heavier
+  burden than the comparison is worth.
+
+Until that check is done, **no number from arms C or D may be quoted anywhere.**
+`ddbs_beam_arch.m`'s docstring now carries this warning at the `ojcoms` case.
