@@ -1591,3 +1591,130 @@ pilots from distance to angle should beat their split —
 
 If it holds, the second half of the contribution costs **negative** overhead:
 fewer pilots and higher rate, purely from allocating them correctly.
+
+---
+
+## 27. CONFIRMED — the allocation rule, and it costs negative overhead
+
+`sector_alloc.m`. Compensated PS throughout; only the `(N_sec, K_alpha)` split
+changes. Reference: ungrouped, 12 pilots = 6.531.
+
+| L | N_TTD | `N_sec` | `K_alpha` | `K_tot` | `L/N_sec` | rate | % ref | gap/BW |
+|---|---|---|---|---|---|---|---|---|
+| 8 | 32 | 4 | 3 | 12 | 2.00 | 4.617 | 71% | 30.0 |
+| 8 | 32 | 7 | 1 | 7 | 1.14 | 5.176 | 79% | 2.3 |
+| 8 | 32 | **8** | **1** | **8** | **1.00** | **6.522** | **100%** | 0.3 |
+| 8 | 32 | 12 | 1 | 12 | 0.67 | 6.545 | 100% | 0.6 |
+| 16 | 16 | 4 | 3 | 12 | 4.00 | 2.312 | 35% | 44.4 |
+| 16 | 16 | 12 | 1 | 12 | 1.33 | 5.797 | 89% | 5.2 |
+| 16 | 16 | 14 | 1 | 14 | 1.14 | 5.501 | 84% | 2.3 |
+| 4 | 64 | 4 | 3 | 12 | 1.00 | 6.475 | 99% | 0.9 |
+| 4 | 64 | **4** | **1** | **4** | **1.00** | **6.335** | **97%** | 0.9 |
+
+### 27.1 Negative overhead, at every L
+
+| L | N_TTD | their split | ours | change |
+|---|---|---|---|---|
+| 4 | 64 | 99% @ 12 pilots | 97% @ **4** | **3x fewer pilots, same rate** |
+| 8 | 32 | 71% @ 12 pilots | **100% @ 8** | **1.5x fewer pilots, +41% rate** |
+| 16 | 16 | 35% @ 12 pilots | 89% @ 12 | **same pilots, +154% rate** |
+
+Their (54) sizes `N_sec` from the **uncompensated** sector width, so under
+compensation their (71) over-spends on the distance dimension. Reallocating to
+the angular dimension is free and strictly better.
+
+### 27.2 The law unifies: `Delta <= 2/P`, in a third independent configuration
+
+`K_min = 8` at `L = 8` here, against `ceil(P/1.19) = 7` in §21.2 — not a
+discrepancy but the same law at a different coverage span:
+
+| configuration | `theta_tot` | measured `K_min` | implied `Delta_max` |
+|---|---|---|---|
+| §21 (baseline comb) | 1.732 | `P/1.19` | `1.732*1.19/P = 2.06/P` |
+| §27 (their sectors) | 2.000 | `P` | `2.00/P` |
+
+**Agreement to 3%.** So the law is not `K_min = 0.875P`, it is
+
+    Delta <= 2/P            (comb spacing <= sub-array beamwidth)
+    K_min = ceil(theta_tot * P / 2)
+
+which is dimensionally sensible, reduces to both measurements, and restates R1 of
+§19 exactly. §20-§21's constants were `theta_tot`-specific readings of it.
+
+The threshold is sharp here: `L/N_sec` = 1.00 → 100%, 1.14 → 79%, 2.00 → 71%,
+4.00 → 35%. And the `maxgap` criterion holds again — 0.3/0.6 → 100%, 2.3 → 79-84%,
+5.2 → 89%, 30-44 → 35-71%.
+
+### 27.3 The combined headline
+
+At **L = 8 (32 TTDs, an 8x hardware reduction)**:
+
+| | pilots | rate | % of ungrouped |
+|---|---|---|---|
+| their PS + their split | 12 | 0.818 | 13% |
+| **compensated PS + our split** | **8** | **6.522** | **100%** |
+
+**8x the rate with 33% fewer pilots, on identical hardware.** The two halves are
+independent and both are needed: compensation alone at their split gives 71%,
+their PS at our split cannot help because the beams never cohere.
+
+---
+
+## 28. Borrowed refinement — the phase we throw away (`phase_refine.m`)
+
+### 28.1 What is being borrowed, and from whom
+
+Our decision rule is `argmax_m |sum_q y|^2` plus a table lookup — **magnitude
+only**. Luo & Gao (IEEE TWC 23(5), May 2024) refine distance from the
+**multi-carrier phase difference** between max-power subcarriers, reaching ~0.10 m
+RMSE at 15 dB. That information is already received and currently discarded, and
+distance is exactly where the grouped architecture is weakest (§27: L=16 tops out
+at 89%, `L/N_sec = 1.33`).
+
+**It is borrowed, and it is cited** (Luo & Gao TWC 2024 for the phase observable;
+TVT 2026 for the coarse-to-fine structure). It is deliberately applied to **both
+arms**, for two reasons: so it cannot be mistaken for this work's contribution,
+and so that a reviewer cannot argue the architecture gap would close under a
+stronger estimator.
+
+### 28.2 The observable
+
+For a single-path LoS user at range `r`,
+
+    y_{m,t} = g * exp(-j 2 pi f_m r / c) * [ a(theta_u, alpha_u)^T w_{:,t,m} ]
+
+The bracket is **known offline** once a coarse `(theta, alpha)` is in hand — it is
+the same beam table the recalibrated lookup already computes. De-embedding it,
+
+    z_m = y_m * conj(beam term)  ~  |.| * exp(-j 2 pi f_m r / c)
+    r_hat = argmax_r | sum_{m in S} z_m exp(+j 2 pi f_m r / c) |
+
+a matched filter in range over the strong-gain subcarriers `S`, after which
+`alpha = (1 - theta^2)/(2 r_hat)`.
+
+### 28.3 Two preconditions, both stated as such
+
+1. **Wrapping.** The per-subcarrier phase step is `2 pi r (B/M)/c`, which at
+   `r = 200 m` is `2 pi * 3.25` — ambiguous. The search is seeded by the coarse
+   estimate and is unambiguous only while the coarse range error stays below
+   `c/(2 B/M) = 30.7 m`. A real precondition, not a formality.
+2. **The model must carry the propagation phase.** Everything above assumes the
+   baseline channel actually contains `exp(-j 2 pi f_m r/c)`. Some near-field
+   models normalise it away, in which case the ranging observable **does not
+   exist** and the idea is void.
+
+**Stage 0 of the script is a gate for (2)**: it fits `r` from the phase of a
+noiseless measurement at five known ranges and compares against the truth,
+requiring 4/5 within 1 m before any rate is computed. If it fails, stop — the
+fallback is a joint `(theta, alpha)` refinement from the beam phase alone, which
+is weaker and needs its own design rather than a patch.
+
+### 28.4 What the run should decide
+
+- **`ours + phase` still leads `them + phase`** → the architecture gap is not an
+  estimator artifact, and the refinement becomes a robustness result rather than
+  a novelty risk.
+- **a large gain on `ours` at L=16** → the §27 distance-domain shortfall closes,
+  and the 16-TTD operating point becomes usable.
+- **no gain anywhere** → the coarse `alpha` was already good enough; report it and
+  drop the idea rather than tuning the grid until something moves.
