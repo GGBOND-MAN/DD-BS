@@ -68,16 +68,28 @@ fprintf('alpha_t (69)-(70) = %.4f | alpha_p = %.4f | Nsec by (54) = %d (paper 4)
 fprintf('=== STAGE 1 gate (their scheme only, SNR=%d dB, N_iter=%d) ===\n', SNR_dB, N_iter);
 fprintf('%3s %5s | %8s %8s | %s\n','L','K','O-cf','O-af','their Fig. 7');
 tgt = [1 3 6.5; 2 4 5.0; 2 12 5.0];   % L=2 at Kalpha=1 (Table 3 literal) and 3
+% The alpha'p discrepancy is decided by running both, not by picking one.
+for mode = [false true]
+assignin('base','OJCOMS_ALPHA_P_TABLE', mode);
+fprintf('\n-- alpha_p from %s --\n', ternary(mode,'Table 3 (0.158)','their eq (69) (0.5809)'));
 for i = 1:size(tgt,1)
     L = tgt(i,1); Ktot = tgt(i,2);
     if L==1, Nsec=1; Ka=Ktot; else, Nsec=4; Ka=Ktot/4; end
     [sec,rho] = ojcoms_algorithm1(Nt,fc,B,M,d,L,thlim,alim,gamma,Nsec,Ka);
     [rcf, raf] = runscheme(sec, rho, 'ojcoms', L, Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q);
-    fprintf('%3d %5d | %8.3f %8.3f | ~%.1f\n', L, numel(sec), rcf, raf, tgt(i,3));
+    % Where does the pilot set actually sweep in alpha? If it never enters
+    % [0.0025, 0.1] the users are unreachable and the rate says nothing about
+    % the architecture -- this column is what exposed the Table 3 alpha'p typo.
+    am = rho.alpha*sec(1).alpha_t + (fc./f).'*sec(1).alpha_p;
+    fprintf('%3d %5d | %8.3f %8.3f | ~%.1f   [alpha sweeps %+.4f..%+.4f]\n', ...
+            L, numel(sec), rcf, raf, tgt(i,3), min(am), max(am));
 end
-fprintf(['\nGATE: O-cf (or O-af) must land near their Fig. 7 column. If it does\n' ...
-         'not, STOP -- get their Table 3 (the sector-wise parameters); do not\n' ...
-         'tune parameters until the number matches.\n']);
+end
+assignin('base','OJCOMS_ALPHA_P_TABLE', false);
+fprintf(['\nGATE: O-cf (or O-af) must land near their Fig. 7 column, and the\n' ...
+         'alpha sweep must cover [%.4f, %.4f]. The eq-(69) block is the one\n' ...
+         'expected to pass; the Table 3 block is run only to document that its\n' ...
+         'alpha_p sends every pilot outside the search region.\n'], alim(1), alim(2));
 
 if ~RUN_STAGE2, return; end
 
@@ -101,6 +113,10 @@ for L = [2 4 8]
 end
 
 % ------------------------------------------------------------------------
+function y = ternary(c,a,b)
+if c, y=a; else, y=b; end
+end
+
 function [r_cf, r_af] = runscheme(sec, rho, arch, L, Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q)
 K = numel(sec); c=3e8; kc=2*pi*fc/c; km=2*pi*f/c;
 w = zeros(Nt,K,M); cf = zeros(M,2,K);

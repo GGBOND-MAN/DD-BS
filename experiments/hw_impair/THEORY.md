@@ -1387,3 +1387,60 @@ configuration and not a reconstruction of it.
 
 Until the re-run passes, **no comparison number may be quoted**, and §21.4's
 39%/31%/19% column stays unusable.
+
+---
+
+## 24. Gate: L=1 passes; L=2 exposes a contradiction inside their own paper
+
+Re-run after the §23 fixes, with Table 3 used verbatim:
+
+| L | K | O-cf | O-af | their Fig. 7 |
+|---|---|---|---|---|
+| 1 | 3 | **5.857** | **5.938** | ~6.5 |
+| 2 | 4 | 0.831 | 0.337 | ~5.0 |
+| 2 | 12 | 1.109 | 0.765 | ~5.0 |
+
+The unit test now reproduces `theta't = -31.797, theta'p = 28.400` exactly, and
+`alpha't = -0.5338` against their `-0.533`.
+
+### 24.1 The ungrouped path is validated
+
+L=1, K=3 gives **5.86-5.94 against their ~6.5, i.e. 90%**. Channel model, rate
+metric, operating point (`r` in [5,200] m, SNR 20 dB) and DDBS beam generation
+are all consistent with their setup. The residual 10% is plausibly the user
+distribution, which their text does not specify (uniform in `r` assumed here).
+
+**So the failure is specific to the grouped path**, which is what matters.
+
+### 24.2 Table 3's `alpha'p` contradicts their own equation (69)
+
+With Table 3's `alpha'p = 0.158` and `alpha't = -0.533`, the LS focus of (66)
+sweeps
+
+    alpha_m in [-0.3872, -0.3606]
+
+— the **entire pilot set points outside the target interval `[0.0025, 0.1]`**, so
+no user is reachable and the measured rate says nothing about the architecture.
+
+Their own (69) gives
+
+    U = (alpha_max - alpha_min)/(fc/fL - fc/fH) = 0.5809   ->   alpha_m in [+0.0033, +0.1008]
+
+which is exactly the target interval — by construction, since that is what (69)
+is for. Three independent confirmations that **0.158 is a typo**:
+
+1. (69), their own equation, gives 0.5809;
+2. 0.5809 sweeps precisely `[alpha_min, alpha_max]` while 0.158 sweeps nothing usable;
+3. 0.5809 is also the DD-BS baseline's own `alpha_p = 1859/3200 = 0.5809`, and
+   their `alpha't = -0.533` likewise matches the baseline's `-427/800 = -0.534`.
+
+So the pair is `(alpha't, alpha'p) = (-0.533, 0.581)` and Table 3 mis-set the
+second. Using (69) in preference to a table entry that the paper's own equation
+contradicts is a correction, not a tuning step — and both are now run, so the
+out-of-range behaviour of the table value is documented rather than hidden.
+
+`ojcoms_baseline.m` now runs the gate twice and prints the realized `alpha` sweep
+next to each rate. **If the eq-(69) block brings L=2 near 5.0, the baseline is
+validated and stage 2 may proceed.** If it does not, the remaining suspect is the
+`(theta'p, p_M)` split of §23.5, and the honest conclusion would be that their
+scheme is not reproducible from the published text.
