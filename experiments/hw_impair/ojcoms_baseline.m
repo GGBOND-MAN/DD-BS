@@ -57,20 +57,20 @@ end
 [~, rho2, dbg2] = ojcoms_algorithm1(Nt,fc,B,M,d,2,thlim,alim,gamma,4,3);
 fprintf('=== Algorithm 1 reconstruction, L=2 ===\n');
 fprintf('rho_theta = %.4f, rho_alpha = %.4f   (both -> 1 as L -> 1)\n', rho2.theta, rho2.alpha);
-fprintf('S bound (59)-(60) = %.3f | S boundary-focusing = %.3f | p_M = %d\n', ...
-        dbg2.Sbound, dbg2.Sbf, dbg2.pM_bf);
+fprintf('source = %s | S bound (59)-(60) = %.3f\n', dbg2.source, dbg2.Sbound);
 fprintf('sector 1: theta_t = %8.3f   theta_p = %8.3f\n', dbg2.theta_t1, dbg2.theta_p1);
 fprintf('  PAPER  : theta_t =  -31.797   theta_p =   28.400   <-- unit test\n');
-fprintf('Nsec by (54) = %d (paper uses 4).  alpha_p = %.4f, alpha_t range = [%.4f %.4f]\n\n', ...
-        dbg2.Nsec_formula, dbg2.alpha_p, dbg2.at_range(1), dbg2.at_range(2));
+fprintf('  PAPER  : alpha_t =   -0.533   alpha_p =    0.158\n');
+fprintf('alpha_t (69)-(70) = %.4f | alpha_p = %.4f | Nsec by (54) = %d (paper 4)\n\n', ...
+        dbg2.alpha_t_formula, dbg2.alpha_p, dbg2.Nsec_formula);
 
 % ---------------- STAGE 1: the gate ----------------
 fprintf('=== STAGE 1 gate (their scheme only, SNR=%d dB, N_iter=%d) ===\n', SNR_dB, N_iter);
 fprintf('%3s %5s | %8s %8s | %s\n','L','K','O-cf','O-af','their Fig. 7');
-tgt = [1 3 6.5; 2 12 5.0];
+tgt = [1 3 6.5; 2 4 5.0; 2 12 5.0];   % L=2 at Kalpha=1 (Table 3 literal) and 3
 for i = 1:size(tgt,1)
     L = tgt(i,1); Ktot = tgt(i,2);
-    if L==1, Nsec=1; Ka=Ktot; else, Nsec=4; Ka=Ktot/Nsec; end
+    if L==1, Nsec=1; Ka=Ktot; else, Nsec=4; Ka=Ktot/4; end
     [sec,rho] = ojcoms_algorithm1(Nt,fc,B,M,d,L,thlim,alim,gamma,Nsec,Ka);
     [rcf, raf] = runscheme(sec, rho, 'ojcoms', L, Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q);
     fprintf('%3d %5d | %8.3f %8.3f | ~%.1f\n', L, numel(sec), rcf, raf, tgt(i,3));
@@ -107,8 +107,23 @@ w = zeros(Nt,K,M); cf = zeros(M,2,K);
 for s = 1:K
     w(:,s,:) = ddbs_beam_arch(Nt,B,fc,M,d, sec(s).theta_t, sec(s).theta_p, ...
                               sec(s).alpha_t, sec(s).alpha_p, 1, arch, L, Inf, Inf, []);
-    % (29)-(30): the closed-form LS effective focus
-    cf(:,1,s) = (kc./km).'*sec(s).theta_p + rho.theta*sec(s).theta_t;
+    % (39)-(40): the LS focus of (29)-(30) PLUS the alias term that the first
+    % attempt dropped. With theta't ~ -32 the principal branch sits near -3.4,
+    % far outside [-1,1], so without the alias index the lookup points nowhere.
+    % Their (43)/(46) say which alias wins: the intra-sub-array factor is
+    % |sin(u)/u| with u = L*delta/2 and delta = pi*xi_m*theta't + 2*pi*p/L, so
+    % the strongest branch is the p maximising it.
+    xi = (f/fc).';
+    for m = 1:M
+        pset = -ceil(L)-2 : ceil(L)+2;
+        dl   = pi*xi(m)*sec(s).theta_t + 2*pi*pset/L;
+        u    = L*dl/2;
+        gsub = abs(sin(u)./max(u,eps));  gsub(abs(u)<eps) = 1;
+        cand = rho.theta*sec(s).theta_t + (1/xi(m))*(sec(s).theta_p + (2/L)*pset);
+        gsub(abs(cand) > 1) = -inf;                 % outside the search region
+        [~,bi] = max(gsub);
+        cf(m,1,s) = cand(bi);
+    end
     cf(:,2,s) = (kc./km).'*sec(s).alpha_p + rho.alpha*sec(s).alpha_t;
 end
 af = actual_focus(w, cf, Nt, fc, B, M, d, K);

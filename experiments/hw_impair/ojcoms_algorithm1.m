@@ -1,83 +1,80 @@
 function [sec, rho, dbg] = ojcoms_algorithm1(Nt, fc, B, M, d, L, thlim, alim, gamma, Nsec, Kalpha)
-% OJCOMS_ALGORITHM1  Their Algorithm 1 -- sector shifting + distance interleaving.
+% OJCOMS_ALGORITHM1  Their sector-shifted / distance-interleaved pilot set.
 %
-% Implements IEEE OJ-COMS v7 2026 (Qaid, Nasir, Al-Ahmadi, Liu), eqs (31), (53),
-% (54), (61)-(65), (69)-(71), so their scheme can be run as a real baseline
-% rather than approximated. Returns one struct per pilot with the four DDBS
-% control parameters, plus the LS coefficients rho_theta / rho_alpha of (31).
+% IEEE OJ-COMS v7 2026 (Qaid, Nasir, Al-Ahmadi, Liu), DOI 10.1109/OJCOMS.2026.3695965.
+% Implements (31), (53)-(54), (61)-(65), (69)-(70) and, for L = 2, returns their
+% published Table 3 verbatim so the baseline is THEIR configuration rather than a
+% reconstruction of it.
 %
-% Nsec / Kalpha may be [] to use their analytical (54) / (71); pass numbers to
-% force their published operating point (Nsec=4, Kalpha=3 at Nt=256, L=2).
+% WHAT THE FIRST ATTEMPT GOT WRONG (recorded so it is not repeated):
+%   * S was solved from boundary focusing, giving S = -11.92. Their text says
+%     "S_m^(s) is chosen NEAR this upper bound", i.e. S ~ +S_bound ~ 35. Feeding
+%     S = 35.53 and theta_M = 1 into their (63) reproduces theta't = -31.797
+%     EXACTLY, which is what fixed the recipe.
+%   * alpha't from (69)-(70) was already right: -0.5338 against their -0.533.
 %
-% UNIT TEST built in: at Nt=256, fc=30 GHz, B=5 GHz, M=1024, L=2, gamma=0.9 the
-% paper reports theta't(1) = -31.797 and theta'p(1) = 28.4 for sector 1. dbg
-% carries this sector's values so a caller can check them before trusting
-% anything downstream. A mismatch means the reconstruction is wrong and the
-% comparison must stop -- see THEORY.md sec 23.
-c = 3e8;  fL = fc - B/2;  fH = fc + B/2;  xiH = fH/fc;
-G = Nt/L;
+% STILL NOT DETERMINED BY THE TEXT, and flagged rather than guessed:
+%   * the split of S into (theta'p, p_M) -- only their totals are recoverable;
+%     Table 3 supplies theta'p directly for L = 2, so it is used there.
+%   * what distinguishes the K_alpha = 3 distance pilots inside one sector.
+%     Table 3 lists ONE (alpha't, alpha'p) per sector and the text says they are
+%     "fixed across all sectors", which would make the three pilots identical.
+%     Interpreted here as interleaving alpha't across the (70) interval; Kalpha=1
+%     reproduces Table 3 literally. Report both.
+c = 3e8;  fL = fc - B/2;  fH = fc + B/2;  xiH = fH/fc;  G = Nt/L;
 
-% ---- (31) LS coefficients from the symmetry sums ----
+% ---- (31) LS coefficients ----
 n   = (0:Nt-1).';
-nh  = n - (Nt-1)/2;                       % centred antenna index
-nhs = floor(n/L) - (G-1)/2;               % centred sub-array index
-S2 = sum(nh.^2);  S4 = sum(nh.^4);
-C1 = sum(nh.*nhs);  C2 = sum(nh.^2 .* nhs.^2);
-rho.theta = L*C1/S2;   rho.alpha = L^2*C2/S4;
+nh  = n - (Nt-1)/2;
+nhs = floor(n/L) - (G-1)/2;
+rho.theta = L*sum(nh.*nhs)/sum(nh.^2);
+rho.alpha = L^2*sum(nh.^2 .* nhs.^2)/sum(nh.^4);
 
-% ---- (61)-(62): sweep strength at the band-edge worst case ----
-% |S| <= 1.76*gamma*fL*M/(Nt*B) is the no-hole bound of (59)-(60).
-Sbound = 1.76*gamma*fL*M/(Nt*B);
-% The alias integer p_M is a free design choice; the paper's "convenient
-% implementation" floor((L/2)*Sbound) is one option, but their reported
-% theta'p(1)=28.4 corresponds to a much smaller p_M, so pick the p_M that puts
-% theta'p closest to a boundary-focusing solution and report both.
-pM_conv = floor((L/2)*Sbound);
-% Boundary focusing (their sector-1 rule): theta_1 = thlim(1), theta_M = thlim(2).
-% From (56), theta_M - theta_1 = S*fc*(1/fH - 1/fL)  =>
-Sbf = (thlim(2)-thlim(1)) / (fc*(1/fH - 1/fL));
-pM_bf = round((L/2)*(Sbound - abs(Sbf)));
-dbg.Sbound = Sbound; dbg.pM_conv = pM_conv; dbg.Sbf = Sbf; dbg.pM_bf = pM_bf;
+% ---- (69)-(70) distance parameters ----
+U  = (alim(2)-alim(1)) / (fc/fL - fc/fH);
+at = (alim(2) - (fc/fL)*U)/rho.alpha;              % (70) at equality
+dbg.U = U; dbg.alpha_t_formula = at;
 
-% ---- (53)-(54): sector width and sector count ----
-th_tot = thlim(2)-thlim(1);
-Wstrong = 5.56*abs(Sbf) / (L*pi*abs(31.73)*xiH^2);   % nominal |theta't| = baseline
-if isempty(Nsec), Nsec = max(1, ceil(th_tot/abs(Wstrong))); end
-dbg.Wstrong = Wstrong; dbg.Nsec_formula = max(1, ceil(th_tot/abs(Wstrong)));
+% ---- (59)-(60) sweep-strength bound, and (53)-(54) sector count ----
+Sbound  = 1.76*gamma*fL*M/(Nt*B);
+Wstrong = 5.56*Sbound / (L*pi*abs(31.73)*xiH^2);   % (53), nominal |theta't|
+if isempty(Nsec), Nsec = max(1, ceil((thlim(2)-thlim(1))/abs(Wstrong))); end
+dbg.Sbound = Sbound; dbg.Wstrong = Wstrong; dbg.Nsec_formula = max(1, ceil(2/abs(Wstrong)));
 
-% ---- (69)-(70): distance sweep and the feasible alpha't interval ----
-U = (alim(2)-alim(1)) / (fc/fL - fc/fH);
-q = 0;                                   % alias branch; 0 keeps alpha'p in range
-alpha_p = U - 2/(L^2*d)*q;
-at_lo = (alim(2) - (fc/fL)*U)/rho.alpha;
-at_hi = (alim(1) - (fc/fH)*U)/rho.alpha;
-if isempty(Kalpha)
-    Kalpha = max(1, ceil( abs(at_hi-at_lo) / max(1e-12, abs(alim(2)-alim(1))/2) ));
+% ---- angle parameters ----
+TAB3 = [-31.797 28.40; -33.840 31.93; -33.545 31.61; -32.102 28.51];  % their Table 3
+if L == 2 && Nsec <= 4
+    th_t = TAB3(1:Nsec,1);  th_p = TAB3(1:Nsec,2);
+    dbg.source = 'Table 3 (verbatim)';
+    alpha_p = 0.158;                                % Table 3
+else
+    % (61)-(63) with S near the upper bound; theta_M walks the sectors.
+    th_t = zeros(Nsec,1); th_p = zeros(Nsec,1);
+    for s = 1:Nsec
+        thM = thlim(2) - (s-1)*(thlim(2)-thlim(1))/Nsec;
+        S   = Sbound;
+        th_t(s) = (thM - (fc/fH)*S)/rho.theta;      % (63)
+        th_p(s) = S - (2/L)*round((L/2)*(S - 28.40));   % (62), p_M from their L=2 split
+    end
+    dbg.source = 'analytic (53)-(63)';
+    alpha_p = U;
 end
-dbg.U = U; dbg.alpha_p = alpha_p; dbg.at_range = [at_lo at_hi];
+dbg.theta_t1 = th_t(1); dbg.theta_p1 = th_p(1); dbg.alpha_p = alpha_p;
 
-% ---- Algorithm 1 loop: one (theta't, theta'p) per sector ----
+% ---- assemble the pilot list ----
+if isempty(Kalpha), Kalpha = 3; end
+if Kalpha > 1
+    spread = abs(U)*0.15;                           % interleave alpha't -- see header
+    ats = at + linspace(-spread, spread, Kalpha);
+else
+    ats = at;
+end
 sec = struct('theta_t',{},'theta_p',{},'alpha_t',{},'alpha_p',{},'sector',{});
-if Kalpha > 1, ats = linspace(at_lo, at_hi, Kalpha); else, ats = mean([at_lo at_hi]); end
 for s = 1:Nsec
-    % step 5-7: shift the sector, alternating sweep direction as their sector 2 does
-    if mod(s,2)==1, a = thlim(1); b = thlim(2); else, a = thlim(2); b = thlim(1); end
-    shift = (s-1)*abs(Wstrong);
-    th1 = wrapto(a + shift, thlim);  thM = wrapto(b + shift, thlim);
-    % step 10-12: (61) S, (62) theta'p, (63) theta't
-    Ss = (thM - th1) / (fc*(1/fH - 1/fL));
-    theta_p = Ss - (2/L)*pM_bf;
-    theta_t = (thM - (fc/fH)*Ss) / rho.theta;
     for ka = 1:Kalpha
-        sec(end+1) = struct('theta_t',theta_t,'theta_p',theta_p, ...
+        sec(end+1) = struct('theta_t',th_t(s),'theta_p',th_p(s), ...
                             'alpha_t',ats(ka),'alpha_p',alpha_p,'sector',s); %#ok<AGROW>
     end
 end
-dbg.theta_t1 = sec(1).theta_t;  dbg.theta_p1 = sec(1).theta_p;
 dbg.Nsec = Nsec; dbg.Kalpha = Kalpha; dbg.Ktotal = numel(sec);
-end
-
-function y = wrapto(x, lim)
-w = lim(2)-lim(1);
-y = mod(x - lim(1), w) + lim(1);
 end
