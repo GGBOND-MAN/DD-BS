@@ -1505,3 +1505,89 @@ substitution inside their scheme plus the measured laws around it. That is a
 **2-3区 contribution, realistically OJ-COMS-tier or a solid 2区** — not 1区. It
 should be scoped and written that way from the start rather than aimed high and
 cut down in review.
+
+---
+
+## 26. Gate passes (qualified), the ablation lands, and the master curve predicts it
+
+### 26.1 The `alpha'p` typo is now proven, not argued
+
+Same code, same everything, one parameter changed:
+
+| L | K | `alpha'p` = 0.158 (Table 3) | `alpha'p` = 0.5809 (their eq 69) | swing |
+|---|---|---|---|---|
+| 2 | 4 | 0.776 / 0.103 | **5.155 / 5.832** | **7x / 57x** |
+| 2 | 12 | 1.096 / 0.519 | **6.351 / 6.499** | 6x / 13x |
+| 1 | 3 | 5.870 / 5.872 | 5.857 / 5.938 | 1.0x |
+
+L=1 is unaffected (no sharing, so the pilots still reach users either way) while
+L=2 swings by up to 57x. Combined with the realized sweep moving from
+`[-0.388, -0.361]` — entirely outside the search region — to `[+0.0025, +0.0999]`,
+which is `[alpha_min, alpha_max]` to four digits, **Table 3's 0.158 is a typo for
+0.58.** This should be raised with the authors.
+
+### 26.2 Gate verdict: qualified pass
+
+`L=1, K=3` gives 5.86-5.94 against their ~6.5 (90%); `L=2, K=4` gives 5.16-5.83
+against ~5.0. The scheme now behaves correctly — `alpha` coverage right, L=2 close
+to L=1, K=12 above K=4. **Exact reproduction of Fig. 7 is not achieved** (L=2 at
+K=12 reads 6.35-6.50 against their ~5.0) and probably cannot be without their SNR
+for Figs. 7-8, which the text does not state, and their exact distance-interleaving
+rule. That is a limitation to report, not to tune away — which is why the claim
+was moved onto the ablation.
+
+### 26.3 The ablation — the paper's primary result
+
+`ablation_ps.m`. Identical pilots, identical lookup, identical channels; the only
+difference is the `2*pi*fc*tau_n` term in the phase shifter. K = 12 for every L.
+
+| L | N_TTD | their PS | compensated | **gain** | their Fig. 8 |
+|---|---|---|---|---|---|
+| 1 | 256 | 6.531 | 6.515 | **1.00x** | ~6.5 |
+| 2 | 128 | 5.222 | 5.554 | 1.06x | ~5.0 |
+| 4 | **64** | 1.803 | **6.464** | **3.59x** | ~2.2 |
+| 8 | **32** | 0.818 | **4.501** | **5.50x** | ~0.6 |
+| 16 | **16** | 0.772 | 2.229 | 2.89x | ~0.4 |
+
+Three things make this credible:
+
+1. **`L=1` gives exactly 1.00x.** With no sharing the added term is a global
+   constant and must cancel — it does, to three digits. A built-in null control
+   that the experiment could have failed and did not.
+2. **The "their PS" column tracks their Fig. 8** across all five points
+   (6.53/6.5, 5.22/5.0, 1.80/2.2, 0.82/0.6, 0.77/0.4). The reproduction that Fig. 7
+   would not give, Fig. 8 does.
+3. **At L=4 the compensated arm reaches 6.464 against the ungrouped 6.515 — 99%
+   with 64 TTDs instead of 256.**
+
+### 26.4 The master curve predicts the ablation, and names the next experiment
+
+Why does the compensated arm reach 99% at L=4 but only 69% at L=8, when §21.2
+says `K_min = ceil(P/1.19) = 7 < 12`? Because the law is about the **angular**
+comb, and their allocation spends the budget on distance. With `N_sec` sector
+shifts over `theta_tot = 2` the comb spacing is `Delta = 2/N_sec`, so the
+master-curve variable is
+
+    Delta * P / 2  =  (2/N_sec) * L / 2  =  L / N_sec
+
+and with their fixed `N_sec = 4`:
+
+| L | 1 | 2 | 4 | 8 | 16 |
+|---|---|---|---|---|---|
+| `L/N_sec` | 1.0 | 1.0 | 1.0 | 2.0 | 4.0 |
+| §20.2 predicts | 100% | 100% | 100% | ~55% | ≪55% |
+| **measured** | 100% | 85% | **99%** | **69%** | **34%** |
+
+The curve, fitted on a completely different configuration, predicts the shape of
+this one including exactly where it breaks. Their (54) sizes `N_sec` from the
+sector width of the **uncompensated** architecture; under compensation the sector
+is wider, so the optimal split moves and their (71) over-spends on distance.
+
+**Registered prediction** (`sector_alloc.m`): reallocating the same or fewer
+pilots from distance to angle should beat their split —
+
+    L=8  : N_sec=7,  K_alpha=1  ->   7 pilots, predict ~98%   (vs 12 -> 69%)
+    L=16 : N_sec=14, K_alpha=1  ->  14 pilots, predict ~98%   (vs 12 -> 34%)
+
+If it holds, the second half of the contribution costs **negative** overhead:
+fewer pilots and higher rate, purely from allocating them correctly.

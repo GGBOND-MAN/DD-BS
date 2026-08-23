@@ -80,7 +80,10 @@ for i = 1:size(tgt,1)
     % Where does the pilot set actually sweep in alpha? If it never enters
     % [0.0025, 0.1] the users are unreachable and the rate says nothing about
     % the architecture -- this column is what exposed the Table 3 alpha'p typo.
-    am = rho.alpha*sec(1).alpha_t + (fc./f).'*sec(1).alpha_p;
+    am = [];
+    for s2 = 1:numel(sec)
+        am = [am; rho.alpha*sec(s2).alpha_t + (fc./f).'*sec(s2).alpha_p]; %#ok<AGROW>
+    end   % union over ALL pilots -- printing only pilot 1 was misleading
     fprintf('%3d %5d | %8.3f %8.3f | ~%.1f   [alpha sweeps %+.4f..%+.4f]\n', ...
             L, numel(sec), rcf, raf, tgt(i,3), min(am), max(am));
 end
