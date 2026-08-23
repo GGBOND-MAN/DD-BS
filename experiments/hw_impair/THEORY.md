@@ -1310,3 +1310,80 @@ reported performance. Only then add the fc-compensated PS and compare at equal
 
 Everything in §12-§21 stays valid as *measurement*; what changes is that almost
 none of it is *novel*, and the write-up must be rebuilt around 22.4 alone.
+
+---
+
+## 23. Gate FAILED, diagnosed, and Table 3 obtained
+
+`ojcoms_baseline.m` stage 1, first attempt:
+
+| L | K | O-cf | O-af | their Fig. 7 |
+|---|---|---|---|---|
+| 1 | 3 | 0.212 | 0.635 | ~6.5 |
+| 2 | 12 | 0.258 | 1.503 | ~5.0 |
+
+Off by an order of magnitude — the reconstruction was wrong, exactly the case the
+gate exists to catch. Two parts of it were right and two were bugs.
+
+### 23.1 What was right
+
+- **`rho_theta = 1.0000, rho_alpha = 0.9999` at L=2 is correct**, not a degenerate
+  case. Analytically `C1 = 4*sum_k (k-63.5)^2` for L=2, giving
+  `rho_theta = 2*699008/1398080 = 0.99995`. The LS coefficients only depart from 1
+  at larger L.
+- **`alpha't = -0.5338` against their published `-0.533`.** (69)-(70) and `U` are
+  implemented correctly.
+
+### 23.2 Bug 1 — `S` solved from the wrong branch
+
+I set `S` by boundary focusing (`theta_1 = -1, theta_M = +1` on one strip),
+getting `S = -11.92`. Their text says `S_m^(s)` is chosen **near the upper bound**
+of (59)-(60), i.e. `S ~ +S_bound ~ 34.85`. Feeding `S = 35.53` with `theta_M = 1`
+into their (63) gives
+
+    theta't = (1 - (fc/fH)*35.53)/rho_theta = 1 - 0.92308*35.53 = -31.797
+
+— **their published value exactly.** That is the recipe. With `gamma = 0.9`,
+`S = S_bound = 34.85` gives `-31.17`, 2% off, which is a reproduction rather than
+a fit. The physical reading: they run a **fast** sweep with many alias wraps
+inside the band (`S ~ 35` moves the raw focus by ~5.9 in `theta` across the band,
+i.e. ~6 strips per pilot), not one slow strip across the range.
+
+### 23.3 Bug 2 — the closed-form lookup dropped the alias term
+
+(29)-(30) give the **principal branch only**. With `theta't ~ -32` and
+`theta'p ~ 28` the principal focus sits near `-3.4`, far outside `[-1,1]`, so the
+O-cf arm was pointing nowhere — hence 0.212. The realized focus needs the alias
+term of (39)-(40), and **their own (43)/(46) say which alias wins**: the
+intra-sub-array factor is `|sin(u)/u|` with `u = L*delta/2` and
+`delta = pi*xi_m*theta't + 2*pi*p/L`, so the strongest branch is the `p` that
+maximises it. That is now implemented, restricted to candidates inside `[-1,1]`.
+
+### 23.4 Table 3, obtained — the baseline is now THEIR configuration
+
+| sector | `theta't` | `theta'p` | `gamma` | `alpha't` | `alpha'p` |
+|---|---|---|---|---|---|
+| 1 | -31.797 | 28.40 | 0.9 | -0.533 | 0.158 |
+| 2 | -33.840 | 31.93 | 0.9 | -0.533 | 0.158 |
+| 3 | -33.545 | 31.61 | 0.9 | -0.533 | 0.158 |
+| 4 | -32.102 | 28.51 | 0.9 | -0.533 | 0.158 |
+
+Used verbatim for L=2, so the comparison baseline is their published
+configuration and not a reconstruction of it.
+
+### 23.5 Two things the paper does not determine, flagged rather than guessed
+
+1. **The split of `S` into `(theta'p, p_M)`.** Their "convenient implementation"
+   `p_M = floor((L/2) S_bound) = 34` gives `theta'p = 0.85`, not the 28.4 of
+   Table 3, which corresponds to `p_M = 7`. Only the composite `S` is recoverable
+   from the text. Table 3 settles it for L=2; for other L the analytic branch
+   carries their L=2 split forward, which is an assumption.
+2. **What separates the `K_alpha = 3` distance pilots inside one sector.** Table 3
+   lists **one** `(alpha't, alpha'p)` per sector and the text says they are "fixed
+   across all sectors" — taken literally the three pilots in a sector are
+   identical. Interpreted here as interleaving `alpha't` across the (70) interval.
+   `Kalpha = 1` reproduces Table 3 literally and is now also run, so the gate
+   reports both 4-pilot and 12-pilot results.
+
+Until the re-run passes, **no comparison number may be quoted**, and §21.4's
+39%/31%/19% column stays unusable.
