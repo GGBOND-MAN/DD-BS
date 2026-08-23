@@ -1591,3 +1591,69 @@ pilots from distance to angle should beat their split —
 
 If it holds, the second half of the contribution costs **negative** overhead:
 fewer pilots and higher rate, purely from allocating them correctly.
+
+---
+
+## 27. CONFIRMED — the allocation rule, and it costs negative overhead
+
+`sector_alloc.m`. Compensated PS throughout; only the `(N_sec, K_alpha)` split
+changes. Reference: ungrouped, 12 pilots = 6.531.
+
+| L | N_TTD | `N_sec` | `K_alpha` | `K_tot` | `L/N_sec` | rate | % ref | gap/BW |
+|---|---|---|---|---|---|---|---|---|
+| 8 | 32 | 4 | 3 | 12 | 2.00 | 4.617 | 71% | 30.0 |
+| 8 | 32 | 7 | 1 | 7 | 1.14 | 5.176 | 79% | 2.3 |
+| 8 | 32 | **8** | **1** | **8** | **1.00** | **6.522** | **100%** | 0.3 |
+| 8 | 32 | 12 | 1 | 12 | 0.67 | 6.545 | 100% | 0.6 |
+| 16 | 16 | 4 | 3 | 12 | 4.00 | 2.312 | 35% | 44.4 |
+| 16 | 16 | 12 | 1 | 12 | 1.33 | 5.797 | 89% | 5.2 |
+| 16 | 16 | 14 | 1 | 14 | 1.14 | 5.501 | 84% | 2.3 |
+| 4 | 64 | 4 | 3 | 12 | 1.00 | 6.475 | 99% | 0.9 |
+| 4 | 64 | **4** | **1** | **4** | **1.00** | **6.335** | **97%** | 0.9 |
+
+### 27.1 Negative overhead, at every L
+
+| L | N_TTD | their split | ours | change |
+|---|---|---|---|---|
+| 4 | 64 | 99% @ 12 pilots | 97% @ **4** | **3x fewer pilots, same rate** |
+| 8 | 32 | 71% @ 12 pilots | **100% @ 8** | **1.5x fewer pilots, +41% rate** |
+| 16 | 16 | 35% @ 12 pilots | 89% @ 12 | **same pilots, +154% rate** |
+
+Their (54) sizes `N_sec` from the **uncompensated** sector width, so under
+compensation their (71) over-spends on the distance dimension. Reallocating to
+the angular dimension is free and strictly better.
+
+### 27.2 The law unifies: `Delta <= 2/P`, in a third independent configuration
+
+`K_min = 8` at `L = 8` here, against `ceil(P/1.19) = 7` in §21.2 — not a
+discrepancy but the same law at a different coverage span:
+
+| configuration | `theta_tot` | measured `K_min` | implied `Delta_max` |
+|---|---|---|---|
+| §21 (baseline comb) | 1.732 | `P/1.19` | `1.732*1.19/P = 2.06/P` |
+| §27 (their sectors) | 2.000 | `P` | `2.00/P` |
+
+**Agreement to 3%.** So the law is not `K_min = 0.875P`, it is
+
+    Delta <= 2/P            (comb spacing <= sub-array beamwidth)
+    K_min = ceil(theta_tot * P / 2)
+
+which is dimensionally sensible, reduces to both measurements, and restates R1 of
+§19 exactly. §20-§21's constants were `theta_tot`-specific readings of it.
+
+The threshold is sharp here: `L/N_sec` = 1.00 → 100%, 1.14 → 79%, 2.00 → 71%,
+4.00 → 35%. And the `maxgap` criterion holds again — 0.3/0.6 → 100%, 2.3 → 79-84%,
+5.2 → 89%, 30-44 → 35-71%.
+
+### 27.3 The combined headline
+
+At **L = 8 (32 TTDs, an 8x hardware reduction)**:
+
+| | pilots | rate | % of ungrouped |
+|---|---|---|---|
+| their PS + their split | 12 | 0.818 | 13% |
+| **compensated PS + our split** | **8** | **6.522** | **100%** |
+
+**8x the rate with 33% fewer pilots, on identical hardware.** The two halves are
+independent and both are needed: compensation alone at their split gives 71%,
+their PS at our split cannot help because the beams never cohere.
