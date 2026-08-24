@@ -41,7 +41,7 @@ addpath(genpath(fileparts(mfilename('fullpath'))));
 Nt=256; fc=30e9; B=5e9; M=1024; c=3e8; d=(c/fc)/2; Q=1;
 f = fc + B/M*((1:M)-1-(M-1)/2);
 thlim=[-1 1]; alim=[0.0025 0.1]; gamma=0.9;
-Rmin=5; Rmax=200; SNR_dB=20; SNR_t=10^(SNR_dB/10); N_iter=20;
+Rmin=5; Rmax=200; SNR_dB=20; SNR_t=10^(SNR_dB/10); N_iter=200;                     % final-figure sample size; sec 33.3
 
 rng(23); CH=cell(N_iter,1);
 for it=1:N_iter
@@ -54,8 +54,9 @@ r_ref = armrate(sec0, rho0, 'full', 1, Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q,'ideal');
 fprintf('ungrouped reference (L=1, 12 pilots) = %.3f\n', r_ref);
 fprintf('compensated PS throughout; only the (N_sec, K_alpha) split changes.\n\n');
 fprintf('serving beam: "ideal" = full per-antenna TTD (old); "shared" = same Nt/L delays\n');
-fprintf('%3s %7s | %5s %7s %6s | %6s | %8s %6s | %8s %6s | %s\n', ...
-        'L','N_TTD','Nsec','Kalpha','K_tot','L/Nsec','ideal','%ref','shared','%ref','note');
+fprintf('rates as mean +/- 95%% CI over %d channels\n', N_iter);
+fprintf('%3s %7s | %5s %7s %6s | %6s | %13s %5s | %14s %5s | %s\n', ...
+        'L','N_TTD','Nsec','Kalpha','K_tot','L/Nsec','ideal serving','%ref','shared serving','%ref','note');
 
 cells = { 8,[4 3],'their split'; 8,[7 1],'ours: 7 pilots'; 8,[8 1],''; 8,[12 1],'equal K, all angular';
          16,[4 3],'their split'; 16,[12 1],'equal K, all angular'; 16,[14 1],'ours: 14 pilots';
@@ -63,10 +64,10 @@ cells = { 8,[4 3],'their split'; 8,[7 1],'ours: 7 pilots'; 8,[8 1],''; 8,[12 1],
 for i = 1:size(cells,1)
     L = cells{i,1}; Nsec = cells{i,2}(1); Ka = cells{i,2}(2);
     [sec, rho] = ojcoms_algorithm1(Nt,fc,B,M,d,L,thlim,alim,gamma,Nsec,Ka);
-    ri = armrate(sec, rho, 'shared', L, Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q,'ideal');
-    rs = armrate(sec, rho, 'shared', L, Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q,'shared');
-    fprintf('%3d %7d | %5d %7d %6d | %6.2f | %8.3f %5.0f%% | %8.3f %5.0f%% | %s\n', ...
-            L, Nt/L, Nsec, Ka, numel(sec), L/Nsec, ri, 100*ri/r_ref, rs, 100*rs/r_ref, cells{i,3});
+    [ri,ci] = armrate(sec, rho, 'shared', L, Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q,'ideal');
+    [rs,cs] = armrate(sec, rho, 'shared', L, Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q,'shared');
+    fprintf('%3d %7d | %5d %7d %6d | %6.2f | %6.3f+-%-5.3f %4.0f%% | %6.3f+-%-5.3f %4.0f%% | %s\n', ...
+            L, Nt/L, Nsec, Ka, numel(sec), L/Nsec, ri,ci,100*ri/r_ref, rs,cs,100*rs/r_ref, cells{i,3});
 end
 fprintf(['\nRead: compare rows at equal L. If the "ours" row beats the "their\n' ...
          'split" row with FEWER pilots, the allocation rule is a contribution in\n' ...
@@ -84,15 +85,16 @@ for s = 1:K
     cf(:,2,s) = (kc./km).'*sec(s).alpha_p + rho.alpha*sec(s).alpha_t;
 end
 fl = actual_focus(w, cf, Nt, fc, B, M, d, K);
-r  = mean(cellfun(@(h) rate_ongrid(h,w,fl,Nt,B,fc,M,d,SNR_t,SNR_dB,Q,K,SERVE,L), CH));
-gp = cov_gap(fl, Nt);
+v  = cellfun(@(h) rate_ongrid(h,w,fl,Nt,B,fc,M,d,SNR_t,SNR_dB,Q,K,SERVE,L), CH);
+r  = mean(v);  gp = 1.96*std(v)/sqrt(numel(v));   % 2nd output is now the 95% CI
 end
 
 function r = rate_ongrid(h,w,focus_loc,Nt,B,fc,M,d,SNR_t,SNR_dB,Q,K,SERVE,P)
 best=-inf;
 for idx=1:K
     y=zeros(M,Q);
-    for m=1:M, y(m,:)=awgn(repmat(h(m,:)*w(:,idx,m),[1,Q]),SNR_dB*2/sqrt(3)); end
+    for m=1:M, y(m,:)=repmat(h(m,:)*w(:,idx,m),[1,Q]); end
+    y = add_awgn(y, SNR_dB*2/sqrt(3));
     [~,i]=max(abs(sum(y,2)).^2);
     ws = serve_beam(Nt,B,fc,M,d,focus_loc(i,1,idx),focus_loc(i,2,idx),SERVE,P);
     t=0; for m=1:M, t=t+log2(1+SNR_t*abs(h(m,:)*ws(:,m))^2)/M; end

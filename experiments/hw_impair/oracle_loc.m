@@ -107,7 +107,8 @@ function best = coarse_rate(h,w,fl,Nt,B,fc,M,d,SNR_t,SNR_dB,Q,K,SERVE,P)
 best=-inf;
 for t=1:K
     y=zeros(M,Q);
-    for m=1:M, y(m,:)=awgn(repmat(h(m,:)*w(:,t,m),[1,Q]),SNR_dB*2/sqrt(3)); end
+    for m=1:M, y(m,:)=repmat(h(m,:)*w(:,t,m),[1,Q]); end
+    y = add_awgn(y, SNR_dB*2/sqrt(3));
     [~,i]=max(abs(sum(y,2)).^2);
     ws = serve_beam(Nt,B,fc,M,d,fl(i,1,t),fl(i,2,t),SERVE,P);
     tt=0; for m=1:M, tt=tt+log2(1+SNR_t*abs(h(m,:)*ws(:,m))^2)/M; end
