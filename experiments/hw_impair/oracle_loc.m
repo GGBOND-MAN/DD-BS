@@ -50,24 +50,28 @@ end
 % absolute ceiling: per-subcarrier analog MRT with perfect CSI
 mrt = mean(cellfun(@(h) mean(arrayfun(@(m) ...
         log2(1+SNR_t*abs(h(m,:)*(exp(1j*angle(h(m,:)'))/sqrt(Nt)))^2), 1:M)), CH));
-fprintf('perfect-CSI analog MRT ceiling = %.3f bit/s/Hz\n', mrt);
+fprintf('perfect-CSI analog MRT ceiling = %.3f bit/s/Hz (UNCONSTRAINED: per-antenna phase)\n', mrt);
 fprintf('oracle = serving beam steered at the TRUE (theta, alpha); no search.\n\n');
 fprintf('%3s %7s %6s %5s | %8s | %8s %8s %8s | %8s\n', ...
         'L','N_TTD','Nsec','K','arm','coarse','oracle','ratio','vs MRT');
 
 cfg = { 1,1,12; 4,4,12; 8,4,12; 8,8,8; 16,12,12 };
+for SERVEc = {'ideal','shared'}
+SERVE = SERVEc{1};
+fprintf('\n-- serving beam: %s --\n', SERVE);
 for i = 1:size(cfg,1)
     L = cfg{i,1}; Nsec = cfg{i,2}; Ka = max(1,round(cfg{i,3}/Nsec));
     [sec, rho] = ojcoms_algorithm1(Nt,fc,B,M,d,L,thlim,alim,gamma,Nsec,Ka);
     for arch = {'ojcoms','shared'}
         a = arch{1};  if L==1, a2='full'; else, a2=a; end
-        [rc, ro] = pairrate(sec,rho,a2,L,Nt,B,fc,M,d,f,km,CH,TRU,SNR_t,SNR_dB,Q);
+        [rc, ro] = pairrate(sec,rho,a2,L,Nt,B,fc,M,d,f,km,CH,TRU,SNR_t,SNR_dB,Q,SERVE);
         nm = 'them'; if strcmp(a,'shared'), nm='ours'; end
         if L==1, nm='ungrouped'; end
         fprintf('%3d %7d %6d %5d | %8s | %8.3f %8.3f %7.2fx | %7.0f%%\n', ...
                 L, Nt/L, Nsec, numel(sec), nm, rc, ro, ro/max(rc,eps), 100*ro/mrt);
         if L==1, break; end
     end
+end
 end
 fprintf(['\nRead the ratio column. Near 1.00 means the coarse table already sits\n' ...
          'at the beamforming optimum and no estimator -- ours, theirs, MUSIC or\n' ...
@@ -76,7 +80,7 @@ fprintf(['\nRead the ratio column. Near 1.00 means the coarse table already sits
          'headroom is real and the phase refinement was simply mis-designed.\n']);
 
 % ------------------------------------------------------------------------
-function [rc, ro] = pairrate(sec,rho,arch,L,Nt,B,fc,M,d,f,km,CH,TRU,SNR_t,SNR_dB,Q)
+function [rc, ro] = pairrate(sec,rho,arch,L,Nt,B,fc,M,d,f,km,CH,TRU,SNR_t,SNR_dB,Q,SERVE)
 K = numel(sec); c=3e8; kc=2*pi*fc/c;
 w = zeros(Nt,K,M); cf = zeros(M,2,K);
 for s = 1:K
@@ -89,21 +93,23 @@ fl = actual_focus(w, cf, Nt, fc, B, M, d, K);
 acc = 0; acco = 0;
 for it = 1:numel(CH)
     h = CH{it};
-    acc  = acc  + coarse_rate(h,w,fl,Nt,B,fc,M,d,SNR_t,SNR_dB,Q,K);
-    ws   = TTD_beam(Nt,B,fc,M,d,TRU(it,1),TRU(it,2));       % oracle: true location
+    acc  = acc  + coarse_rate(h,w,fl,Nt,B,fc,M,d,SNR_t,SNR_dB,Q,K,SERVE,L);
+    % oracle: true location, served on the SAME hardware as the coarse arm, so
+    % the ratio isolates estimation error and not the serving stage
+    ws   = serve_beam(Nt,B,fc,M,d,TRU(it,1),TRU(it,2),SERVE,L);
     t=0; for m=1:M, t=t+log2(1+SNR_t*abs(h(m,:)*ws(:,m))^2)/M; end
     acco = acco + t;
 end
 rc = acc/numel(CH);  ro = acco/numel(CH);
 end
 
-function best = coarse_rate(h,w,fl,Nt,B,fc,M,d,SNR_t,SNR_dB,Q,K)
+function best = coarse_rate(h,w,fl,Nt,B,fc,M,d,SNR_t,SNR_dB,Q,K,SERVE,P)
 best=-inf;
 for t=1:K
     y=zeros(M,Q);
     for m=1:M, y(m,:)=awgn(repmat(h(m,:)*w(:,t,m),[1,Q]),SNR_dB*2/sqrt(3)); end
     [~,i]=max(abs(sum(y,2)).^2);
-    ws = TTD_beam(Nt,B,fc,M,d,fl(i,1,t),fl(i,2,t));
+    ws = serve_beam(Nt,B,fc,M,d,fl(i,1,t),fl(i,2,t),SERVE,P);
     tt=0; for m=1:M, tt=tt+log2(1+SNR_t*abs(h(m,:)*ws(:,m))^2)/M; end
     best=max(best,tt);
 end

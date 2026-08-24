@@ -1893,3 +1893,49 @@ What it does and does not threaten:
 including the SNR sweep and the hardware table. Run both ways and report both:
 if the serving stage is meant to have its own full-TTD array, that assumption has
 to be stated explicitly rather than inherited silently.
+
+---
+
+## 32. Serving stage put on the same hardware (`serve_beam.m`)
+
+§31.2's gap is closed. `serve_beam.m` builds the data beam either the old way
+(`ideal` = per-antenna TTD) or on the **same `Nt/L` delays the training stage is
+limited to** (`shared` = grouped TTD + per-antenna PS carrying the exact `fc`
+term). `ablation_ps`, `sector_alloc` and `oracle_loc` now run **both** and print
+them side by side, so the cost of grouping the serving stage is visible rather
+than assumed away.
+
+**Self-check:** at `P = 1` the shared path is
+`exp(-j 2 pi f_m tau)` — exactly `TTD_beam`. The function verifies this once per
+session and prints `max|TTD_beam - shared|`; anything but ~1e-16 means the
+reduction is broken and nothing below it can be trusted.
+
+### 32.1 One modelling decision, made deliberately and in their favour
+
+**Both arms serve with the compensated programming, including "theirs".** A
+serving beam must focus *at* `fc`, and on a grouped array only the phase shifter
+can supply the intra-sub-array phase to do it. Programming the PS their way for
+the serving beam — their (14) with the focus parameters, or with zeros — leaves an
+uncompensated `2*pi*fc*(tau_g - tau_n)` at **every** subcarrier including `fc`,
+so the beam never focuses at all. That is a strawman, not their architecture:
+their (14) describes the **training** beam design, which is what this project
+disputes.
+
+Holding the serving stage identical across arms therefore (i) respects the
+hardware budget in both stages, (ii) gives their arm the best serving beam the
+hardware allows, and (iii) isolates the training-beam difference, which is the
+actual claim.
+
+### 32.2 What the re-run has to settle
+
+- **the oracle stops being constant.** 6.648 for every L was the tell; with a
+  grouped serving beam the ceiling must fall as L grows, and §31.1's 1.02-1.03x
+  bound has to be re-derived against it before it can be quoted.
+- **absolute rates fall everywhere**, ours and theirs alike.
+- **the ablation gain (3.59x / 5.50x / 2.89x) and the allocation result (8 pilots
+  beating 12) are hypotheses again until re-measured.** Both should survive,
+  since both arms change identically — but "should survive" is precisely the kind
+  of reasoning that was wrong in §18 and §23, and it does not get a pass here
+  because it happens to favour the conclusion.
+
+Until this re-run lands, no number from §26, §27 or §31 may be quoted as final.
