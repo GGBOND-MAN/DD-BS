@@ -1827,3 +1827,115 @@ search, no estimator — and compares against the coarse table:
 
 Either answer is worth having, and the experiment costs nothing: the oracle arm
 performs no search at all.
+
+---
+
+## 31. The oracle bound closes the estimator direction — and exposes a modelling gap
+
+`oracle_loc.m`. Perfect-CSI analog MRT ceiling = 6.658; oracle (serving beam
+steered at the **true** location, no search) = 6.648 for every row.
+
+| L | N_TTD | `N_sec` | K | arm | coarse | oracle/coarse |
+|---|---|---|---|---|---|---|
+| 1 | 256 | 1 | 12 | ungrouped | 6.531 | **1.02x** |
+| 4 | 64 | 4 | 12 | ours | 6.459 | **1.03x** |
+| 8 | 32 | 8 | 8 | ours | 6.528 | **1.02x** |
+| 8 | 32 | 4 | 12 | ours | 4.453 | 1.49x |
+| 16 | 16 | 12 | 12 | ours | 5.849 | 1.14x |
+| 4 | 64 | 4 | 12 | them | 1.477 | 4.50x |
+| 8 | 32 | 4 | 12 | them | 1.257 | 5.29x |
+| 16 | 16 | 12 | 12 | them | 0.753 | 8.83x |
+
+### 31.1 The estimator direction is closed, with a bound
+
+**Wherever the allocation is right (`L/N_sec = 1`), the ratio is 1.02-1.03x** —
+the recalibrated lookup is within 2-3% of an oracle that is simply *told* the
+user's exact position. There is nothing left for an estimator to recover: not the
+phase refinement, not a joint `(theta, alpha)` search, not MUSIC. §30's negative
+was not a failed attempt, it was hitting a ceiling.
+
+**Where headroom remains it is COVERAGE, not ESTIMATION.** L=8 at `N_sec=4` shows
+1.49x, and reallocating to `N_sec=8` collapses it to 1.02x at *fewer* pilots
+(§27). If no pilot illuminates the user, no amount of phase processing invents
+one. This is an independent confirmation, from an oracle rather than a rate
+sweep, that **allocation is the lever and estimation is not.**
+
+Two claims are strengthened rather than merely defended: the recalibrated lookup
+is not "adequate", it is within 2% of oracle; and the DDBS serving beam reaches
+6.648 against an analog-MRT ceiling of 6.658, i.e. **99.85%** — a clean anchor
+for the paper.
+
+### 31.2 MODELLING GAP — the serving beam is not sharing the hardware
+
+**The oracle is 6.648 for every L, and it should not be.** It is constant because
+`TTD_beam` builds the serving beam with **one TTD per antenna**, regardless of the
+`N_TTD = Nt/L` the training stage is restricted to. Every number in this project
+therefore assumes a system that trains on 16-32 delays and then serves on 256.
+
+A reviewer will find this immediately: *"you claim a 16x TTD reduction while your
+data beam uses the full array."* And this project already learned this lesson once
+— §5-§11 found the serving beam dominates end-to-end rate (pure-TD 0.044 vs hybrid
+0.996 at a 32.9 ps LSB) and `ttd_beam_impaired.m` / `training_ddbs_e2e.m` were
+built precisely to stop measuring only the training stage. That machinery was not
+carried into the OJ-COMS comparison.
+
+What it does and does not threaten:
+
+- **absolute rates fall** for every grouped row, ours and theirs alike;
+- **the comparison should survive**, because both arms serve with the same
+  hardware and the compensation applies to the serving beam by the same physics —
+  but "should" is a hypothesis, and it is exactly the kind that has been wrong
+  twice in this project already (§18, §23);
+- the oracle bound of §31.1 must be **re-derived** with a grouped serving beam,
+  since 6.648 is currently an ungrouped number.
+
+**This is the next experiment and it takes precedence over everything else**,
+including the SNR sweep and the hardware table. Run both ways and report both:
+if the serving stage is meant to have its own full-TTD array, that assumption has
+to be stated explicitly rather than inherited silently.
+
+---
+
+## 32. Serving stage put on the same hardware (`serve_beam.m`)
+
+§31.2's gap is closed. `serve_beam.m` builds the data beam either the old way
+(`ideal` = per-antenna TTD) or on the **same `Nt/L` delays the training stage is
+limited to** (`shared` = grouped TTD + per-antenna PS carrying the exact `fc`
+term). `ablation_ps`, `sector_alloc` and `oracle_loc` now run **both** and print
+them side by side, so the cost of grouping the serving stage is visible rather
+than assumed away.
+
+**Self-check:** at `P = 1` the shared path is
+`exp(-j 2 pi f_m tau)` — exactly `TTD_beam`. The function verifies this once per
+session and prints `max|TTD_beam - shared|`; anything but ~1e-16 means the
+reduction is broken and nothing below it can be trusted.
+
+### 32.1 One modelling decision, made deliberately and in their favour
+
+**Both arms serve with the compensated programming, including "theirs".** A
+serving beam must focus *at* `fc`, and on a grouped array only the phase shifter
+can supply the intra-sub-array phase to do it. Programming the PS their way for
+the serving beam — their (14) with the focus parameters, or with zeros — leaves an
+uncompensated `2*pi*fc*(tau_g - tau_n)` at **every** subcarrier including `fc`,
+so the beam never focuses at all. That is a strawman, not their architecture:
+their (14) describes the **training** beam design, which is what this project
+disputes.
+
+Holding the serving stage identical across arms therefore (i) respects the
+hardware budget in both stages, (ii) gives their arm the best serving beam the
+hardware allows, and (iii) isolates the training-beam difference, which is the
+actual claim.
+
+### 32.2 What the re-run has to settle
+
+- **the oracle stops being constant.** 6.648 for every L was the tell; with a
+  grouped serving beam the ceiling must fall as L grows, and §31.1's 1.02-1.03x
+  bound has to be re-derived against it before it can be quoted.
+- **absolute rates fall everywhere**, ours and theirs alike.
+- **the ablation gain (3.59x / 5.50x / 2.89x) and the allocation result (8 pilots
+  beating 12) are hypotheses again until re-measured.** Both should survive,
+  since both arms change identically — but "should survive" is precisely the kind
+  of reasoning that was wrong in §18 and §23, and it does not get a pass here
+  because it happens to favour the conclusion.
+
+Until this re-run lands, no number from §26, §27 or §31 may be quoted as final.

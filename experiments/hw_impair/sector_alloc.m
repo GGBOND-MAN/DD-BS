@@ -50,11 +50,12 @@ end
 
 % ungrouped reference at the same pilot budget
 [sec0, rho0] = ojcoms_algorithm1(Nt,fc,B,M,d,1,thlim,alim,gamma,1,12);
-r_ref = armrate(sec0, rho0, 'full', 1, Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q);
+r_ref = armrate(sec0, rho0, 'full', 1, Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q,'ideal');
 fprintf('ungrouped reference (L=1, 12 pilots) = %.3f\n', r_ref);
 fprintf('compensated PS throughout; only the (N_sec, K_alpha) split changes.\n\n');
-fprintf('%3s %7s | %5s %7s %6s | %6s | %8s %6s %8s | %s\n', ...
-        'L','N_TTD','Nsec','Kalpha','K_tot','L/Nsec','rate','%ref','gap/BW','note');
+fprintf('serving beam: "ideal" = full per-antenna TTD (old); "shared" = same Nt/L delays\n');
+fprintf('%3s %7s | %5s %7s %6s | %6s | %8s %6s | %8s %6s | %s\n', ...
+        'L','N_TTD','Nsec','Kalpha','K_tot','L/Nsec','ideal','%ref','shared','%ref','note');
 
 cells = { 8,[4 3],'their split'; 8,[7 1],'ours: 7 pilots'; 8,[8 1],''; 8,[12 1],'equal K, all angular';
          16,[4 3],'their split'; 16,[12 1],'equal K, all angular'; 16,[14 1],'ours: 14 pilots';
@@ -62,9 +63,10 @@ cells = { 8,[4 3],'their split'; 8,[7 1],'ours: 7 pilots'; 8,[8 1],''; 8,[12 1],
 for i = 1:size(cells,1)
     L = cells{i,1}; Nsec = cells{i,2}(1); Ka = cells{i,2}(2);
     [sec, rho] = ojcoms_algorithm1(Nt,fc,B,M,d,L,thlim,alim,gamma,Nsec,Ka);
-    [r, gp] = armrate(sec, rho, 'shared', L, Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q);
-    fprintf('%3d %7d | %5d %7d %6d | %6.2f | %8.3f %5.0f%% %8.1f | %s\n', ...
-            L, Nt/L, Nsec, Ka, numel(sec), L/Nsec, r, 100*r/r_ref, gp, cells{i,3});
+    ri = armrate(sec, rho, 'shared', L, Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q,'ideal');
+    rs = armrate(sec, rho, 'shared', L, Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q,'shared');
+    fprintf('%3d %7d | %5d %7d %6d | %6.2f | %8.3f %5.0f%% | %8.3f %5.0f%% | %s\n', ...
+            L, Nt/L, Nsec, Ka, numel(sec), L/Nsec, ri, 100*ri/r_ref, rs, 100*rs/r_ref, cells{i,3});
 end
 fprintf(['\nRead: compare rows at equal L. If the "ours" row beats the "their\n' ...
          'split" row with FEWER pilots, the allocation rule is a contribution in\n' ...
@@ -72,7 +74,7 @@ fprintf(['\nRead: compare rows at equal L. If the "ours" row beats the "their\n'
          'variable -- rows with L/Nsec near 1 should land near 100%% regardless of L.\n']);
 
 % ------------------------------------------------------------------------
-function [r, gp] = armrate(sec, rho, arch, L, Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q)
+function [r, gp] = armrate(sec, rho, arch, L, Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q,SERVE)
 K = numel(sec); c=3e8; kc=2*pi*fc/c; km=2*pi*f/c;
 w = zeros(Nt,K,M); cf = zeros(M,2,K);
 for s = 1:K
@@ -82,17 +84,17 @@ for s = 1:K
     cf(:,2,s) = (kc./km).'*sec(s).alpha_p + rho.alpha*sec(s).alpha_t;
 end
 fl = actual_focus(w, cf, Nt, fc, B, M, d, K);
-r  = mean(cellfun(@(h) rate_ongrid(h,w,fl,Nt,B,fc,M,d,SNR_t,SNR_dB,Q,K), CH));
+r  = mean(cellfun(@(h) rate_ongrid(h,w,fl,Nt,B,fc,M,d,SNR_t,SNR_dB,Q,K,SERVE,L), CH));
 gp = cov_gap(fl, Nt);
 end
 
-function r = rate_ongrid(h,w,focus_loc,Nt,B,fc,M,d,SNR_t,SNR_dB,Q,K)
+function r = rate_ongrid(h,w,focus_loc,Nt,B,fc,M,d,SNR_t,SNR_dB,Q,K,SERVE,P)
 best=-inf;
 for idx=1:K
     y=zeros(M,Q);
     for m=1:M, y(m,:)=awgn(repmat(h(m,:)*w(:,idx,m),[1,Q]),SNR_dB*2/sqrt(3)); end
     [~,i]=max(abs(sum(y,2)).^2);
-    ws = TTD_beam(Nt,B,fc,M,d,focus_loc(i,1,idx),focus_loc(i,2,idx));
+    ws = serve_beam(Nt,B,fc,M,d,focus_loc(i,1,idx),focus_loc(i,2,idx),SERVE,P);
     t=0; for m=1:M, t=t+log2(1+SNR_t*abs(h(m,:)*ws(:,m))^2)/M; end
     best=max(best,t);
 end

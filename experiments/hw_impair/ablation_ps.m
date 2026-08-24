@@ -55,14 +55,19 @@ fprintf('%3s %7s | %9s %9s %8s | %8s %8s | %s\n', ...
         'L','N_TTD','their PS','compens.','gain','gap them','gap ours','their Fig. 8');
 fig8 = containers.Map({1,2,4,8,16},{6.5,5.0,2.2,0.6,0.4});   % read off their Fig. 8
 
+for SERVEc = {'ideal','shared'}
+SERVE = SERVEc{1};
+fprintf('\n-- serving beam on %s hardware --\n', ternary2(strcmp(SERVE,'ideal'), ...
+        'FULL per-antenna TTD (old, optimistic)', 'the SAME Nt/L delays as training'));
 for L = [1 2 4 8 16]
     Nsec = min(4, max(1,L));  Ka = max(1, round(KTOT/Nsec));
     [sec, rho] = ojcoms_algorithm1(Nt,fc,B,M,d,L,thlim,alim,gamma,Nsec,Ka);
-    [rT, gT] = armrate(sec, rho, 'ojcoms', L, Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q);
-    [rC, gC] = armrate(sec, rho, 'shared', L, Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q);
+    [rT, gT] = armrate(sec, rho, 'ojcoms', L, Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q,SERVE);
+    [rC, gC] = armrate(sec, rho, 'shared', L, Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q,SERVE);
     ref = '-'; if isKey(fig8,L), ref = sprintf('~%.1f', fig8(L)); end
     fprintf('%3d %7d | %9.3f %9.3f %7.2fx | %8.1f %8.1f | %s\n', ...
             L, Nt/L, rT, rC, rC/max(rT,eps), gT, gC, ref);
+end
 end
 
 fprintf(['\nRead: the "gain" column IS the claim -- one term in the phase shifter,\n' ...
@@ -72,7 +77,11 @@ fprintf(['\nRead: the "gain" column IS the claim -- one term in the phase shifte
          'assumption. Report the reproduction gap either way.\n']);
 
 % ------------------------------------------------------------------------
-function [r, gp] = armrate(sec, rho, arch, L, Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q)
+function y = ternary2(c,a,b)
+if c, y=a; else, y=b; end
+end
+
+function [r, gp] = armrate(sec, rho, arch, L, Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q,SERVE)
 K = numel(sec); c=3e8; kc=2*pi*fc/c; km=2*pi*f/c;
 w = zeros(Nt,K,M); cf = zeros(M,2,K);
 for s = 1:K
@@ -82,17 +91,17 @@ for s = 1:K
     cf(:,2,s) = (kc./km).'*sec(s).alpha_p + rho.alpha*sec(s).alpha_t;
 end
 fl = actual_focus(w, cf, Nt, fc, B, M, d, K);        % same lookup for both arms
-r  = mean(cellfun(@(h) rate_ongrid(h,w,fl,Nt,B,fc,M,d,SNR_t,SNR_dB,Q,K), CH));
+r  = mean(cellfun(@(h) rate_ongrid(h,w,fl,Nt,B,fc,M,d,SNR_t,SNR_dB,Q,K,SERVE,L), CH));
 gp = cov_gap(fl, Nt);
 end
 
-function r = rate_ongrid(h,w,focus_loc,Nt,B,fc,M,d,SNR_t,SNR_dB,Q,K)
+function r = rate_ongrid(h,w,focus_loc,Nt,B,fc,M,d,SNR_t,SNR_dB,Q,K,SERVE,P)
 best=-inf;
 for idx=1:K
     y=zeros(M,Q);
     for m=1:M, y(m,:)=awgn(repmat(h(m,:)*w(:,idx,m),[1,Q]),SNR_dB*2/sqrt(3)); end
     [~,i]=max(abs(sum(y,2)).^2);
-    ws = TTD_beam(Nt,B,fc,M,d,focus_loc(i,1,idx),focus_loc(i,2,idx));
+    ws = serve_beam(Nt,B,fc,M,d,focus_loc(i,1,idx),focus_loc(i,2,idx),SERVE,P);
     t=0; for m=1:M, t=t+log2(1+SNR_t*abs(h(m,:)*ws(:,m))^2)/M; end
     best=max(best,t);
 end
