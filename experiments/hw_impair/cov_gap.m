@@ -15,6 +15,11 @@ function [gap, cov] = cov_gap(fl, Nt, lim)
 %
 % The fix is to bound the interval with the region edges before differencing, so
 % the distance from the extreme focus to the edge counts as the hole it is.
+if nargin == 0
+    fprintf('cov_gap measures a coverage hole; call it from a script.\n');
+    fprintf('Runnable scripts: rate_vs_snr, ablation_ps, sector_alloc, oracle_loc, ojcoms_baseline, phase_refine, kmin_fine, kspace_map, pilot_spacing_map, compare_ojcoms, hw_probe_*\n');
+    return;
+end
 if nargin < 3, lim = 0.866; end
 sn = sort(reshape(fl(:,1,:), [], 1));
 sn = sn(sn >= -lim & sn <= lim);

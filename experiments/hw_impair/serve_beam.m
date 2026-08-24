@@ -25,6 +25,11 @@ function ws = serve_beam(Nt,B,fc,M,d,th,al,mode,P)
 %
 % Self-check: at P = 1 the shared path reduces to exp(-j 2 pi f_m tau), which is
 % exactly TTD_beam. Verified once per session below.
+if nargin == 0
+    fprintf('serve_beam builds the data beam; call it from a script.\n');
+    fprintf('Runnable scripts: rate_vs_snr, ablation_ps, sector_alloc, oracle_loc, ojcoms_baseline, phase_refine, kmin_fine, kspace_map, pilot_spacing_map, compare_ojcoms, hw_probe_*\n');
+    return;
+end
 persistent checked
 if nargin < 9 || isempty(P), P = 1; end
 if strcmp(mode,'ideal') || P == 1

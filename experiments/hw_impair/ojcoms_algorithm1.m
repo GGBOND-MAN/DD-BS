@@ -21,6 +21,11 @@ function [sec, rho, dbg] = ojcoms_algorithm1(Nt, fc, B, M, d, L, thlim, alim, ga
 %     "fixed across all sectors", which would make the three pilots identical.
 %     Interpreted here as interleaving alpha't across the (70) interval; Kalpha=1
 %     reproduces Table 3 literally. Report both.
+if nargin == 0
+    fprintf('ojcoms_algorithm1 generates their pilot set; call it from a script.\n');
+    fprintf('Runnable scripts: rate_vs_snr, ablation_ps, sector_alloc, oracle_loc, ojcoms_baseline, phase_refine, kmin_fine, kspace_map, pilot_spacing_map, compare_ojcoms, hw_probe_*\n');
+    return;
+end
 c = 3e8;  fL = fc - B/2;  fH = fc + B/2;  xiH = fH/fc;  G = Nt/L;
 
 % ---- (31) LS coefficients ----

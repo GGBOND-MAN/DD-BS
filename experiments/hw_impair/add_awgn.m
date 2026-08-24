@@ -1,4 +1,4 @@
-function y = add_awgn(x, snr_db)
+function y = add_awgn(x, snr_db)  %#ok<*STOUT>
 % ADD_AWGN  Vectorised replacement for the baseline's per-subcarrier awgn call.
 %
 % The baseline (and every probe here) writes
@@ -17,7 +17,19 @@ function y = add_awgn(x, snr_db)
 %
 % Only the RNG draw ORDER changes, so numbers move by Monte-Carlo scatter, not by
 % construction. The self-check below confirms the variance once per session.
+%
+% CALLING IT WITH NO ARGUMENTS runs the self-check and returns. This is a helper,
+% not a script: pressing Run on it used to fail with "not enough input
+% arguments", which says nothing useful about the file.
 persistent checked
+if nargin == 0
+    fprintf('add_awgn is a helper function, not a script. Running its self-check:\n');
+    checked = []; add_awgn(zeros(1,4), 20); y = [];
+    fprintf('Runnable scripts here: rate_vs_snr, ablation_ps, sector_alloc,\n');
+    fprintf('oracle_loc, ojcoms_baseline, phase_refine, kmin_fine, kspace_map,\n');
+    fprintf('pilot_spacing_map, compare_ojcoms, hw_probe_*.\n');
+    return;
+end
 nv = 10^(-snr_db/10);                       % awgn's 0-dBW-assumed noise variance
 if isempty(checked)
     t = zeros(1,200000);
