@@ -1939,3 +1939,83 @@ actual claim.
   because it happens to favour the conclusion.
 
 Until this re-run lands, no number from §26, §27 or §31 may be quoted as final.
+
+---
+
+## 33. Re-run on honest hardware — every claim survives, and a new asymmetry falls out
+
+`serve_beam` self-check: `max|TTD_beam - shared| = 7.23e-15` at P=1. The reduction
+is exact, so everything below it stands.
+
+### 33.1 The oracle now falls with L, as it had to
+
+| L | N_TTD | oracle, ideal serving | oracle, **shared** serving | vs MRT |
+|---|---|---|---|---|
+| 1 | 256 | 6.648 | 6.648 | 100% |
+| 4 | 64 | 6.648 | 6.638 | 100% |
+| 8 | 32 | 6.648 | 6.603 | 99% |
+| 16 | 16 | 6.648 | **6.458** | 97% |
+
+§31.2 said a constant 6.648 was the tell. It is no longer constant — but **the fall
+is only 2.9% at L=16**, and that is the finding.
+
+### 33.2 Grouping the SERVING beam is nearly free; grouping the TRAINING beam is not
+
+Absolute rates barely moved: 6.515→6.536, 6.464→6.417, 4.501→4.432, 2.229→2.138 —
+**1-4%**. And this is the same asymmetry §5-§11 found in the *resolution* dimension,
+now confirmed in the *sharing* dimension:
+
+| beam | delay range | why |
+|---|---|---|
+| serving | ~2-4 ns | focuses one location; aperture-limited |
+| DDBS training | 30-135 ns | carries the large intercept `theta_t` ~ -32 |
+
+The residual under sharing is `2*pi*(f_m-fc)*(tau_g - tau_n)` and `tau_g - tau_n`
+scales with the delay range, so **the same grouping costs the training beam ~30x
+what it costs the serving beam.** That is why the correction that had to be made
+turned out to change so little — and it is a result worth stating rather than a
+relief to be quiet about.
+
+It also means the hardware claim is clean: **`N_TTD = Nt/L` in both stages**, no
+hidden full-TTD array anywhere.
+
+### 33.3 The ablation survives
+
+| L | N_TTD | ideal serving | **shared serving** |
+|---|---|---|---|
+| 1 | 256 | 1.00x | **1.00x** |
+| 2 | 128 | 1.06x | 1.08x |
+| 4 | 64 | 3.59x | **3.70x** |
+| 8 | 32 | 5.50x | 4.24x |
+| 16 | 16 | 2.89x | **3.80x** |
+
+The `L=1` null control is still exactly 1.00x. Individual gains move by up to 1.3x
+in both directions (L=8 down, L=16 up), which at `N_iter = 20` is Monte-Carlo
+scatter, not structure — **the final figure needs `N_iter >= 200`**, and the gains
+should be quoted with error bars rather than to three digits.
+
+### 33.4 The allocation rule survives, within 2 points everywhere
+
+| L | split | ideal | shared |
+|---|---|---|---|
+| 8 | theirs, 12 pilots | 71% | 69% |
+| 8 | **ours, 8 pilots** | 100% | **99%** |
+| 16 | theirs, 12 pilots | 36% | 35% |
+| 16 | all-angular, 12 pilots | 89% | 90% |
+| 4 | theirs, 12 pilots | 98% | 99% |
+| 4 | **ours, 4 pilots** | 96% | **97%** |
+
+### 33.5 The headline, now on honest hardware
+
+At **L = 8: 32 TTDs, an 8x reduction, in BOTH stages**, ceiling 6.603:
+
+| | pilots | rate | % of ceiling |
+|---|---|---|---|
+| their PS + their `(N_sec=4, K_alpha=3)` split | 12 | 0.786 | 12% |
+| **compensated PS + `(N_sec=8, K_alpha=1)`** | **8** | **6.446** | **98%** |
+
+**8.2x the rate with 33% fewer pilots, on identical hardware in both stages.**
+
+And the estimator bound of §31.1 holds under the correction: ours reads 1.02-1.03x
+from the oracle wherever the allocation is right, 1.12x at L=16. The recalibrated
+lookup remains within 2-3% of being *told* the answer.
