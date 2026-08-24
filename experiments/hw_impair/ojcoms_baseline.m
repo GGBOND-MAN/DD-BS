@@ -154,7 +154,8 @@ function r = rate_ongrid(h,w,focus_loc,Nt,B,fc,M,d,SNR_t,SNR_dB,Q,K)
 best=-inf;
 for idx=1:K
     y=zeros(M,Q);
-    for m=1:M, y(m,:)=awgn(repmat(h(m,:)*w(:,idx,m),[1,Q]),SNR_dB*2/sqrt(3)); end
+    for m=1:M, y(m,:)=repmat(h(m,:)*w(:,idx,m),[1,Q]); end
+    y = add_awgn(y, SNR_dB*2/sqrt(3));
     [~,i]=max(abs(sum(y,2)).^2);
     ws = TTD_beam(Nt,B,fc,M,d,focus_loc(i,1,idx),focus_loc(i,2,idx));
     t=0; for m=1:M, t=t+log2(1+SNR_t*abs(h(m,:)*ws(:,m))^2)/M; end

@@ -40,7 +40,7 @@ addpath(genpath(fileparts(mfilename('fullpath'))));
 Nt=256; fc=30e9; B=5e9; M=1024; c=3e8; d=(c/fc)/2; Q=1;
 f = fc + B/M*((1:M)-1-(M-1)/2);
 thlim=[-1 1]; alim=[0.0025 0.1]; gamma=0.9;
-Rmin=5; Rmax=200; SNR_dB=20; SNR_t=10^(SNR_dB/10); N_iter=20;
+Rmin=5; Rmax=200; SNR_dB=20; SNR_t=10^(SNR_dB/10); N_iter=200;                     % final-figure sample size; sec 33.3
 KTOT = 12;                       % their Fig. 8 operating point
 
 rng(23); CH=cell(N_iter,1);
@@ -51,8 +51,9 @@ end
 fprintf('Ablation: identical pilots, identical lookup, only the PS term differs.\n');
 fprintf('Nt=%d, SNR=%d dB, K=%d pilots for every L (their Fig. 8 setting), N_iter=%d\n\n', ...
         Nt, SNR_dB, KTOT, N_iter);
-fprintf('%3s %7s | %9s %9s %8s | %8s %8s | %s\n', ...
-        'L','N_TTD','their PS','compens.','gain','gap them','gap ours','their Fig. 8');
+fprintf('rates as mean +/- 95%% CI over %d channels\n', N_iter);
+fprintf('%3s %7s | %15s %15s %13s | %s\n', ...
+        'L','N_TTD','their PS','compensated','gain','their Fig. 8');
 fig8 = containers.Map({1,2,4,8,16},{6.5,5.0,2.2,0.6,0.4});   % read off their Fig. 8
 
 for SERVEc = {'ideal','shared'}
@@ -62,11 +63,14 @@ fprintf('\n-- serving beam on %s hardware --\n', ternary2(strcmp(SERVE,'ideal'),
 for L = [1 2 4 8 16]
     Nsec = min(4, max(1,L));  Ka = max(1, round(KTOT/Nsec));
     [sec, rho] = ojcoms_algorithm1(Nt,fc,B,M,d,L,thlim,alim,gamma,Nsec,Ka);
-    [rT, gT] = armrate(sec, rho, 'ojcoms', L, Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q,SERVE);
-    [rC, gC] = armrate(sec, rho, 'shared', L, Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q,SERVE);
+    [rT, gT, cT] = armrate(sec, rho, 'ojcoms', L, Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q,SERVE);
+    [rC, gC, cC] = armrate(sec, rho, 'shared', L, Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q,SERVE);
+    % gain CI by first-order propagation -- the two arms share the channels, so
+    % this is conservative (positively correlated errors partly cancel)
+    gci = (rC/rT)*sqrt((cC/rC)^2 + (cT/rT)^2);
     ref = '-'; if isKey(fig8,L), ref = sprintf('~%.1f', fig8(L)); end
-    fprintf('%3d %7d | %9.3f %9.3f %7.2fx | %8.1f %8.1f | %s\n', ...
-            L, Nt/L, rT, rC, rC/max(rT,eps), gT, gC, ref);
+    fprintf('%3d %7d | %7.3f+-%-6.3f %7.3f+-%-6.3f %6.2f+-%-5.2f | %s\n', ...
+            L, Nt/L, rT, cT, rC, cC, rC/max(rT,eps), gci, ref);
 end
 end
 
@@ -81,7 +85,7 @@ function y = ternary2(c,a,b)
 if c, y=a; else, y=b; end
 end
 
-function [r, gp] = armrate(sec, rho, arch, L, Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q,SERVE)
+function [r, gp, ci] = armrate(sec, rho, arch, L, Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q,SERVE)
 K = numel(sec); c=3e8; kc=2*pi*fc/c; km=2*pi*f/c;
 w = zeros(Nt,K,M); cf = zeros(M,2,K);
 for s = 1:K
@@ -91,7 +95,8 @@ for s = 1:K
     cf(:,2,s) = (kc./km).'*sec(s).alpha_p + rho.alpha*sec(s).alpha_t;
 end
 fl = actual_focus(w, cf, Nt, fc, B, M, d, K);        % same lookup for both arms
-r  = mean(cellfun(@(h) rate_ongrid(h,w,fl,Nt,B,fc,M,d,SNR_t,SNR_dB,Q,K,SERVE,L), CH));
+v  = cellfun(@(h) rate_ongrid(h,w,fl,Nt,B,fc,M,d,SNR_t,SNR_dB,Q,K,SERVE,L), CH);
+r  = mean(v);  ci = 1.96*std(v)/sqrt(numel(v));   % 95% CI on the mean
 gp = cov_gap(fl, Nt);
 end
 
@@ -99,7 +104,8 @@ function r = rate_ongrid(h,w,focus_loc,Nt,B,fc,M,d,SNR_t,SNR_dB,Q,K,SERVE,P)
 best=-inf;
 for idx=1:K
     y=zeros(M,Q);
-    for m=1:M, y(m,:)=awgn(repmat(h(m,:)*w(:,idx,m),[1,Q]),SNR_dB*2/sqrt(3)); end
+    for m=1:M, y(m,:)=repmat(h(m,:)*w(:,idx,m),[1,Q]); end
+    y = add_awgn(y, SNR_dB*2/sqrt(3));
     [~,i]=max(abs(sum(y,2)).^2);
     ws = serve_beam(Nt,B,fc,M,d,focus_loc(i,1,idx),focus_loc(i,2,idx),SERVE,P);
     t=0; for m=1:M, t=t+log2(1+SNR_t*abs(h(m,:)*ws(:,m))^2)/M; end

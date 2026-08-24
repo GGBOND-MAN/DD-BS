@@ -148,7 +148,8 @@ function best = onechan(h,w,fl,refine,Nt,B,fc,M,d,f,km,N1,N2,SNR_t,SNR_dB,Q,K,rg
 best=-inf;
 for t=1:K
     y=zeros(M,Q);
-    for m=1:M, y(m,:)=awgn(repmat(h(m,:)*w(:,t,m),[1,Q]),SNR_dB*2/sqrt(3)); end
+    for m=1:M, y(m,:)=repmat(h(m,:)*w(:,t,m),[1,Q]); end
+    y = add_awgn(y, SNR_dB*2/sqrt(3));
     ys = sum(y,2);
     [~,i]=max(abs(ys).^2);
     th = fl(i,1,t);  al = fl(i,2,t);
