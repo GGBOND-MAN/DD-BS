@@ -2019,3 +2019,89 @@ At **L = 8: 32 TTDs, an 8x reduction, in BOTH stages**, ceiling 6.603:
 And the estimator bound of §31.1 holds under the correction: ours reads 1.02-1.03x
 from the oracle wherever the allocation is right, 1.12x at L=16. The recalibrated
 lookup remains within 2-3% of being *told* the answer.
+
+---
+
+## 34. FINAL NUMBERS (N_iter = 200, 95% CI) — and two corrections the CIs force
+
+### 34.1 Rate vs SNR at L=8, 32 TTDs in both stages (`rate_vs_snr.m`)
+
+| SNR | MRT | oracle | ours, 8 pilots | % ceil | theirs, 12 pilots | % ceil |
+|---|---|---|---|---|---|---|
+| 0 | 1.000 | 0.977 | 0.088+-0.025 | **9%** | 0.023+-0.007 | 2% |
+| 5 | 2.057 | 2.023 | 0.469+-0.082 | **23%** | 0.083+-0.030 | 4% |
+| 10 | 3.459 | 3.417 | 2.522+-0.136 | 74% | 0.233+-0.062 | 7% |
+| 15 | 5.028 | 4.983 | 4.718+-0.055 | 95% | 0.623+-0.165 | 13% |
+| 20 | 6.658 | 6.612 | 6.445+-0.023 | 97% | 1.027+-0.243 | 16% |
+| 25 | 8.309 | 8.263 | 8.082+-0.082 | 98% | 1.275+-0.302 | 15% |
+| 30 | 9.967 | 9.921 | 9.738+-0.098 | 98% | 1.822+-0.383 | 18% |
+
+- **The oracle sits 0.3-0.7% below MRT at every SNR.** Grouping the serving beam is
+  free across the whole range, confirming §33.2 beyond the single 20 dB slice.
+- Ours saturates at **97-98% of the ceiling from 20 dB up**; theirs never passes 18%.
+- **Below ~10 dB OURS COLLAPSES TOO** — 9% at 0 dB, 23% at 5 dB. This is a
+  limitation, and it goes in the paper. The decision is an `argmax` over
+  `M = 1024` subcarriers, so its threshold is set by the **selection problem**,
+  not by array gain: at low SNR the largest of 1024 noisy samples is noise.
+
+### 34.2 CORRECTION to §31.1 — that bound was SNR-specific
+
+§31.1 concluded "no estimator can recover anything" from oracle/coarse = 1.02-1.03x.
+**Measured at 20 dB.** At 0 dB the same ratio is 0.977/0.088 = **11x**. So there is
+large estimator headroom at low SNR, and the closure applies only to the
+high-SNR regime. OJ-COMS's own MF refinement (their Sec VI, Fig. 10) targets
+exactly the limited-pilot / low-SNR corner — so that direction is open, and
+occupied by them. State the bound with its SNR attached.
+
+### 34.3 CORRECTION to §33.3 — L=2 shows NO gain, and the earlier gains were over-precise
+
+`ablation_ps`, shared serving, mean +/- 95% CI over 200 channels:
+
+| L | N_TTD | their PS | compensated | gain | was (N_iter=20) |
+|---|---|---|---|---|---|
+| 1 | 256 | 6.524+-0.023 | 6.538+-0.019 | **1.00+-0.00** | 1.00x |
+| 2 | 128 | 5.481+-0.326 | 5.383+-0.329 | **0.98+-0.08** | 1.08x |
+| 4 | 64 | 2.313+-0.411 | 6.490+-0.021 | **2.81+-0.50** | 3.70x |
+| 8 | 32 | 0.982+-0.233 | 4.613+-0.357 | **4.70+-1.17** | 4.24x |
+| 16 | 16 | 1.212+-0.202 | 3.128+-0.376 | **2.58+-0.53** | 3.80x |
+
+**`L=2` is 0.98+-0.08 — no gain.** The 1.06-1.08x of §33.3 was noise. This is not a
+weakness but a sharper story: OJ-COMS show `L=2` works and `L>=3` does not, and
+that is exactly where the compensation starts to matter. **The claim is about
+`L >= 4`**, i.e. sharing *beyond* their published operating point, and it should be
+stated that way rather than as a blanket improvement.
+
+Gains at `L >= 4` are **2.6-4.7x with ~20% relative CI** — real (no CI includes
+1.0) but not quotable to three digits. The `L=1` null control remains exactly
+1.00+-0.00.
+
+### 34.4 The allocation rule holds, with non-overlapping CIs
+
+`sector_alloc`, shared serving, reference 6.528:
+
+| L | split | rate | % ref |
+|---|---|---|---|
+| 8 | theirs, 12 pilots | 4.742+-0.344 | 73% |
+| 8 | **ours, 8 pilots** | **6.403+-0.069** | **98%** |
+| 16 | theirs, 12 pilots | 3.157+-0.370 | 48% |
+| 16 | **ours, 14 pilots** | **5.731+-0.234** | **88%** |
+| 4 | theirs, 12 pilots | 6.488+-0.023 | 99% |
+| 4 | **ours, 4 pilots** | **6.350+-0.034** | **97%** |
+
+At L=8 and L=16 the CIs do not overlap. At L=4 ours is **slightly below** theirs
+(6.350 vs 6.488, CIs nearly touching) — so the honest statement there is *97% of
+the rate for a third of the pilots*, not a rate win.
+
+### 34.5 The headline, decomposed
+
+At **L = 8: 32 TTDs in both stages**, ceiling 6.5:
+
+| | pilots | rate | |
+|---|---|---|---|
+| uncompensated PS + their split | 12 | 0.982+-0.233 | |
+| compensated PS + their split | 12 | 4.742+-0.344 | **4.8x from compensation** |
+| **compensated PS + our split** | **8** | **6.403+-0.069** | **1.35x more, on 33% fewer pilots** |
+
+**Combined: 6.5x the rate with a third fewer pilots, on identical hardware in both
+stages** — and the two halves are separable, which is what makes them two
+contributions rather than one bundled claim.
