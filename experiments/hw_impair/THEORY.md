@@ -2105,3 +2105,81 @@ At **L = 8: 32 TTDs in both stages**, ceiling 6.5:
 **Combined: 6.5x the rate with a third fewer pilots, on identical hardware in both
 stages** — and the two halves are separable, which is what makes them two
 contributions rather than one bundled claim.
+
+---
+
+## 35. The `alpha'p` question is CLOSED — by the reproduction, not by the authors
+
+The OJ-COMS source is not available and the authors are not reachable. **This is
+not a blocker, and §26.1's "should be raised with the authors" was already
+overtaken by the data.**
+
+The value is settled empirically, on four independent grounds:
+
+1. **Their own (69)** gives `U = 0.5809` for their stated `[alpha_min, alpha_max]`.
+2. **0.5809 sweeps `[+0.0025, +0.0999]`** — `[alpha_min, alpha_max]` to four
+   digits — while **0.158 sweeps `[-0.387, -0.361]`**, entirely outside the search
+   region, so no user is reachable and the rate measures nothing.
+3. **0.5809 is also the DD-BS baseline's own `alpha_p = 1859/3200`**, and their
+   `alpha't = -0.533` matches the baseline's `-427/800 = -0.534`.
+4. **Decisively: with 0.5809 the reproduction tracks their published Fig. 8 at all
+   five sub-array sizes** (6.52/6.5, 5.48/5.0, 2.31/2.2, 0.98/0.6, 1.21/0.4).
+   With 0.158 the L=2 rate swings by up to 57x and nothing matches.
+
+**Reproducing a published figure is stronger evidence than an email would have
+been**, because it is checkable by a reviewer. Not having the code is also the
+norm rather than a handicap: the scheme was rebuilt from the published equations
+and Table 3, which is exactly what a reproduction is supposed to do.
+
+### How to write it — state it, justify it, do not accuse
+
+> We reproduce [X]'s scheme from their published equations and Table III. We note
+> that the tabulated `alpha'_p = 0.158` is inconsistent with their own (69), which
+> yields `U = 0.5809` for the stated distance interval; with 0.158 the focusing
+> trajectory (66) sweeps `alpha in [-0.387, -0.361]`, entirely outside the target
+> range `[0.0025, 0.1]`, so no user is reachable. We therefore adopt the value
+> implied by (69), which reproduces their reported Fig. 8 across all tested
+> sub-array sizes, and attribute the discrepancy to a typographical error.
+
+Neutral, verifiable, and it pre-empts the obvious reviewer question. Also report
+the 0.158 result in an appendix table so the reader can see why it cannot stand.
+
+---
+
+## 36. LIMITATION NOT YET SOLVED — sharing divides the COUNT, not the RANGE
+
+The hardware bill has two halves and this project has so far paid attention to one.
+
+| beam | `theta_t` | delay range | line per element |
+|---|---|---|---|
+| DD-BS baseline training | 31.73 | 134.9 ns | **40.5 m** |
+| **their sectors, and ours** | -31.8 | **135.2 ns** | **40.6 m** |
+| sweep slowed, `s = 1/2` | -15.9 | 67.6 ns | 20.3 m |
+| `s = 1/4` | -7.9 | 33.6 ns | 10.1 m |
+| `s = 1/8` | -4.0 | 17.0 ns | 5.1 m |
+| serving beam (focus only) | — | 4.2 ns | 1.3 m |
+| **realizable devices (§13 survey)** | — | **1.47-508 ps** | — |
+
+**Sharing divides the element COUNT by `L`; it does not touch the RANGE each
+surviving element must cover.** Our L=8 design still needs 135 ns — about **270x
+the best device in the survey**, or 40 m of line per element. A 32-element array
+whose elements each need 40 m of line is not buildable, and **§13's
+unrealizability problem is therefore NOT solved by anything in §26-§34.** Claiming
+an "8x hardware reduction" without this qualification would be false.
+
+What does reduce the range is §14's knob: slowing the angular sweep scales
+`theta_t`, and the range with it, at the cost of pilots. **Sharing and sweep-rate
+are independent axes**, so the design space is three-dimensional:
+
+    N_TTD = Nt/L              element count      <- sharing (sec 27)
+    range ~ |theta_t| ~ s     per-element range  <- sweep rate (sec 14)
+    K = N_sec * K_alpha       overhead           <- pays for both
+
+`hw_budget.m` measures it at L=8, holding `N_sec = L` (the §27 rule) and sweeping
+`K_alpha`, since slowing the sweep thins the strips and the distance dimension has
+to absorb it. The last column is how far each point still sits from a 508 ps
+device.
+
+**The honest outcome may be that no point on the grid is realizable today.** If so
+that is the finding — quantify the gap and name the device technology that would
+close it — not a reason to report element counts alone and hope no one asks.
