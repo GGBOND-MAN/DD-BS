@@ -52,22 +52,23 @@ r_ref = armrate(sec0, rho0, 'full', 1, Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q,'ideal');
 fprintf('reference (ungrouped, 12 pilots) = %.3f | L=%d -> N_TTD=%d in both stages\n', ...
         r_ref, L, Nt/L);
 fprintf('best realizable TTD range in the survey: %g ps\n\n', DEV_PS);
-fprintf('%6s %8s %8s %8s | %5s %7s %6s | %8s %5s | %9s\n', ...
-        's','theta_t','range','line/el','Nsec','Kalpha','K_tot','rate','%ref','x over dev');
+fprintf('%6s %8s %8s %8s %8s | %5s %7s %6s | %8s %5s | %9s\n', ...
+        's','S','theta_t','range','line/el','Nsec','Kalpha','K_tot','rate','%ref','x over dev');
 
 nn=(-(Nt-1)/2:(Nt-1)/2)';
 for s_sw = [1 1/2 1/4 1/8]
   for Ka = [1 2 4]
-    [sec, rho] = ojcoms_algorithm1(Nt,fc,B,M,d,L,thlim,alim,gamma,L,Ka);
-    for q = 1:numel(sec)                      % slow the sweep: scale both angles
-        sec(q).theta_t = sec(q).theta_t*s_sw;
-        sec(q).theta_p = sec(q).theta_p*s_sw;
-    end
+    % CORRECTED: slow the sweep by scaling S inside Algorithm 1, which re-solves
+    % (63) so the sector centres stay put. The first version scaled theta_t and
+    % theta_p here instead, which dragged every sector to boresight -- see the
+    % s_sweep note in ojcoms_algorithm1.m.
+    [sec, rho] = ojcoms_algorithm1(Nt,fc,B,M,d,L,thlim,alim,gamma,L,Ka,s_sw);
     tt = sec(1).theta_t; at = sec(1).alpha_t;
     v  = (nn*d*tt - (nn*d).^2*at)/c;  rg = (max(v)-min(v));
     r  = armrate(sec, rho, 'shared', L, Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q,'shared');
-    fprintf('%6.3f %8.2f %7.1fns %7.2fm | %5d %7d %6d | %8.3f %4.0f%% | %8.0fx\n', ...
-            s_sw, tt, rg*1e9, rg*c, L, Ka, numel(sec), r, 100*r/r_ref, rg*1e12/DEV_PS);
+    [~,~,dbg] = ojcoms_algorithm1(Nt,fc,B,M,d,L,thlim,alim,gamma,L,Ka,s_sw);
+    fprintf('%6.3f %8.2f %8.2f %7.1fns %7.2fm | %5d %7d %6d | %8.3f %4.0f%% | %8.0fx\n', ...
+            s_sw, dbg.Sbound, tt, rg*1e9, rg*c, L, Ka, numel(sec), r, 100*r/r_ref, rg*1e12/DEV_PS);
   end
 end
 fprintf(['\nRead: the last column is how far each design point still is from the\n' ...

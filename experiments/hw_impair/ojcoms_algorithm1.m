@@ -1,4 +1,4 @@
-function [sec, rho, dbg] = ojcoms_algorithm1(Nt, fc, B, M, d, L, thlim, alim, gamma, Nsec, Kalpha)
+function [sec, rho, dbg] = ojcoms_algorithm1(Nt, fc, B, M, d, L, thlim, alim, gamma, Nsec, Kalpha, s_sweep)
 % OJCOMS_ALGORITHM1  Their sector-shifted / distance-interleaved pilot set.
 %
 % IEEE OJ-COMS v7 2026 (Qaid, Nasir, Al-Ahmadi, Liu), DOI 10.1109/OJCOMS.2026.3695965.
@@ -13,6 +13,16 @@ function [sec, rho, dbg] = ojcoms_algorithm1(Nt, fc, B, M, d, L, thlim, alim, ga
 %     EXACTLY, which is what fixed the recipe.
 %   * alpha't from (69)-(70) was already right: -0.5338 against their -0.533.
 %
+% s_sweep (optional, default 1) SLOWS THE ANGULAR SWEEP by scaling the composite
+% sweep strength S, which is what shrinks |theta_t| and with it the per-element
+% DELAY RANGE (sec 36). It must scale S ALONE: (63) is then re-solved so each
+% sector's target direction theta_M stays where it was. Scaling theta_t and
+% theta_p together instead -- the obvious move, and the one hw_budget did first --
+% drags every sector centre toward boresight (theta_M goes 0.97, 0.49, 0.24, 0.12
+% as s halves), so the array stops covering the search region and the rate
+% collapses for a reason that has nothing to do with the sweep rate. Passing
+% s_sweep ~= 1 forces the analytic branch, since Table 3 is an s = 1 design.
+%
 % STILL NOT DETERMINED BY THE TEXT, and flagged rather than guessed:
 %   * the split of S into (theta'p, p_M) -- only their totals are recoverable;
 %     Table 3 supplies theta'p directly for L = 2, so it is used there.
@@ -26,6 +36,7 @@ if nargin == 0
     fprintf('Runnable scripts: rate_vs_snr, ablation_ps, sector_alloc, oracle_loc, ojcoms_baseline, phase_refine, kmin_fine, kspace_map, pilot_spacing_map, compare_ojcoms, hw_probe_*\n');
     return;
 end
+if nargin < 12 || isempty(s_sweep), s_sweep = 1; end
 c = 3e8;  fL = fc - B/2;  fH = fc + B/2;  xiH = fH/fc;  G = Nt/L;
 
 % ---- (31) LS coefficients ----
@@ -41,14 +52,14 @@ at = (alim(2) - (fc/fL)*U)/rho.alpha;              % (70) at equality
 dbg.U = U; dbg.alpha_t_formula = at;
 
 % ---- (59)-(60) sweep-strength bound, and (53)-(54) sector count ----
-Sbound  = 1.76*gamma*fL*M/(Nt*B);
+Sbound  = s_sweep * 1.76*gamma*fL*M/(Nt*B);      % s_sweep scales S ALONE
 Wstrong = 5.56*Sbound / (L*pi*abs(31.73)*xiH^2);   % (53), nominal |theta't|
 if isempty(Nsec), Nsec = max(1, ceil((thlim(2)-thlim(1))/abs(Wstrong))); end
 dbg.Sbound = Sbound; dbg.Wstrong = Wstrong; dbg.Nsec_formula = max(1, ceil(2/abs(Wstrong)));
 
 % ---- angle parameters ----
 TAB3 = [-31.797 28.40; -33.840 31.93; -33.545 31.61; -32.102 28.51];  % their Table 3
-if L == 2 && Nsec <= 4
+if L == 2 && Nsec <= 4 && s_sweep == 1
     th_t = TAB3(1:Nsec,1);  th_p = TAB3(1:Nsec,2);
     dbg.source = 'Table 3 (verbatim)';
     % TABLE 3 CONTRADICTS THEIR OWN (69). With alpha'p = 0.158 and
