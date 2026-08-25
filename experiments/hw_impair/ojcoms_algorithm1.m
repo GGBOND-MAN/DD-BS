@@ -93,8 +93,23 @@ dbg.theta_t1 = th_t(1); dbg.theta_p1 = th_p(1); dbg.alpha_p = alpha_p;
 % ---- assemble the pilot list ----
 if isempty(Kalpha), Kalpha = 3; end
 if Kalpha > 1
-    spread = abs(U)*0.15;                           % interleave alpha't -- see header
-    ats = at + linspace(-spread, spread, Kalpha);
+    % CENTRED, NESTED interleave: offsets 0, -1, +1, -2, +2, ... scaled to +/-spread.
+    %
+    % The previous version used linspace(-spread, spread, Kalpha), which for EVEN
+    % Kalpha contains no zero -- so Kalpha = 1 sat exactly on the (70) optimum
+    % while Kalpha = 2 sat on neither side of it, and adding a pilot made things
+    % WORSE. hw_budget showed that in all four sweep rows (98->95, 98->95, 94->90,
+    % 80->74), which reads as a non-monotonic K_alpha axis and is purely an
+    % artifact of this placement, not of OJ-COMS's scheme (their text does not
+    % specify the interleave -- see the note above).
+    %
+    % This ordering guarantees the set for Kalpha is a SUBSET of the set for
+    % Kalpha+1, so an extra distance pilot can never remove the optimum and the
+    % rate is monotone in Kalpha up to Monte-Carlo noise. Kalpha = 1 is unchanged.
+    spread = abs(U)*0.15;
+    k   = 0:(Kalpha-1);
+    off = ceil(k/2) .* (-1).^k;                     % 0, -1, +1, -2, +2, ...
+    ats = at + off * (spread/max(1, floor(Kalpha/2)));
 else
     ats = at;
 end
