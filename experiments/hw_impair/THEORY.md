@@ -2292,3 +2292,66 @@ word. The correct claim is that the requirement moves from **40 m of line per
 element**, which is not a design, to **3.9 m**, which is a switched-line or fibre
 delay network — bulky and lossy, but a thing that exists. Naming the technology
 class and the residual factor is the honest form; "we make DDBS practical" is not.
+
+---
+
+## 39. Is K=32 a floor? — my prediction was WRONG, and the right answer is a two-constraint law
+
+`pareto_LsK.m`. **§38's prediction ("halving L halves the pilots at unchanged
+range") is refuted.** At `s = 1/8` and equal pilots, MORE sharing is as good or
+better: `K=8` gives 76% at L=4 and **80% at L=8**; `K=16` gives 92% at both.
+Spending TTDs does **not** buy pilots back at a small delay range.
+
+### 39.1 First: the `L=2` rows are invalid, by a rule I wrote myself
+
+The script sets `N_sec = L`, so at `L=2` it used `N_sec = 2` — below the `K >= 3`
+floor its own header prints two lines earlier. Every `L=2` row (70%, 79%, 81%,
+64%, 72%, 89%, 42%, 51%, 60%) is therefore a configuration that violates the
+baseline's own DDBS floor, not evidence about sharing. **Discard them.** `N_sec = L`
+is the *sharing* lower bound; the *absolute* floor `N_sec >= 3` binds first at
+small L and I did not apply it.
+
+### 39.2 The law that fits every valid cell
+
+    K_min = max( L , 3 , C/s )        with C ~ 4
+
+| `s` | L | predicted | measured >=95% |
+|---|---|---|---|
+| 1 | 4 | 4 | **4 pilots** |
+| 1 | 8 | 8 | **8 pilots** |
+| 1/4 | 4 | 16 | >16 (grid ends at 16, reads 94%) |
+| 1/4 | 8 | 16 | **16 pilots** |
+| 1/8 | 4 | 32 | >16 (grid ends at 16, reads 92%) |
+| 1/8 | 8 | 32 | **32 pilots** |
+
+**Two constraints, and whichever is larger binds:**
+
+- **sharing** (§27): `N_sec >= L`, because the comb must be finer than the
+  sub-array beam. Binds at **large `s`**.
+- **coverage**: `K * s >= C`, because a pilot's 2-D `(theta, alpha)` reach scales
+  with the sweep strength `S ~ s`. Binds at **small `s`**.
+
+This is §18's C1/C2 pair again — withdrawn there because I had tied the two
+variables together and could not separate them. Untied, both are real; what was
+wrong in §18 was the *claim that either alone explains the data*, not the
+constraints themselves.
+
+### 39.3 The answer to the question
+
+**At `s = 1/8` (12.9 ns, 25x over a 508 ps device), K = 32 IS the floor, and it is
+not reducible by spending TTDs** — the coverage constraint binds there and it does
+not contain `L`. Conversely:
+
+- want **8 pilots**? Then `s >= 1/2`, i.e. accept a 64.2 ns range (126x over device).
+- want **12.9 ns**? Then pay 32 pilots, at any TTD count from 32 up.
+
+So the design space is **not** a freely tradeable cube. It is essentially
+**2-D in (delay range, pilots)**, with **TTD count almost free** down to L=8:
+32 TTDs perform as well as 64 or 128 at equal `(s, K)`. That is a *better* result
+than the one I predicted — the 8x hardware reduction costs nothing, and the only
+real currency is range-vs-pilots, which is exactly the `range x K ~ 450 ns-pilots`
+law of §38.1.
+
+**What is untested:** `L = 4` at `K = 32`, and any `L = 2` row with `N_sec >= 3`.
+Neither changes the answer above, but the paper's frontier table should either
+include them or state the grid's edge honestly.
