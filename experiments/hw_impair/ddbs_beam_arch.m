@@ -54,6 +54,11 @@ function [w, n_ttd, lsb_used] = ddbs_beam_arch(Nt,B,fc,M,d,theta1,theta2,alpha1,
 % frequency-independent term 2*pi*fc*tau_n (the hybrid split), so this function
 % composes the count reduction with the precision relaxation.
 
+if nargin == 0
+    fprintf('ddbs_beam_arch generates beams; call it from a script.\n');
+    fprintf('Runnable scripts: rate_vs_snr, ablation_ps, sector_alloc, oracle_loc, ojcoms_baseline, phase_refine, kmin_fine, kspace_map, pilot_spacing_map, compare_ojcoms, hw_probe_*\n');
+    return;
+end
 if nargin<12||isempty(P),   P   = 1;   end
 if nargin<13||isempty(Btd), Btd = Inf; end
 if nargin<14||isempty(Bps), Bps = Inf; end

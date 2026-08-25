@@ -3,6 +3,11 @@ function fl = actual_focus(w,focus_loc,Nt,fc,B,M,d,K)
 % (impaired) hardware. Two 1-D searches per (m,t): theta at the designed alpha,
 % then alpha at that theta. NOTE the correlation uses w WITHOUT conjugation --
 % self-tested against the ideal beams, where it reproduces the designed table.
+if nargin == 0
+    fprintf('actual_focus builds a focus table; call it from a script.\n');
+    fprintf('Runnable scripts: rate_vs_snr, ablation_ps, sector_alloc, oracle_loc, ojcoms_baseline, phase_refine, kmin_fine, kspace_map, pilot_spacing_map, compare_ojcoms, hw_probe_*\n');
+    return;
+end
 c=3e8; f = fc + B/M*((1:M)-1-(M-1)/2); km = 2*pi*f/c;
 nn=(-(Nt-1)/2:(Nt-1)/2)'; N1=nn*d; N2=(nn*d).^2;
 GS = linspace(-0.9,0.9,801); GA = linspace(1/400,1/10,81);

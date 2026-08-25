@@ -118,10 +118,10 @@
   答案已经收敛成一条单变量曲线。</p>
 
   <div class="kpis">
-    <div class="kpi"><div class="v">42%</div><div class="k">32 个 TTD、原参数下的速率（占理想）</div></div>
-    <div class="kpi"><div class="v">16×</div><div class="k">TTD 减少倍数，速率仍高于 baseline 自身工作点</div></div>
-    <div class="kpi"><div class="v">K·N<sub>TTD</sub></div><div class="k">≈ 0.875·N<sub>t</sub>：导频数 × TTD 数 的交换律</div></div>
-    <div class="kpi"><div class="v">44/44</div><div class="k">离线几何判据的预测命中，零误判</div></div>
+    <div class="kpi"><div class="v">6.5×</div><div class="k">32 个 TTD 下的速率提升，导频还少 1/3</div></div>
+    <div class="kpi"><div class="v">98%</div><div class="k">32 个 TTD、8 导频达到的天花板占比（SNR≥20 dB）</div></div>
+    <div class="kpi"><div class="v">Δ ≤ 2/P</div><div class="k">导频梳齿距 ≤ 子阵波束宽：唯一的设计律</div></div>
+    <div class="kpi"><div class="v">44/44</div><div class="k">离线几何判据零误判（阈值 ≈3 个波束宽）</div></div>
   </div>
 </header>
 
@@ -134,7 +134,14 @@
     导频<b>数量</b>不是变量，导频<b>分辨率</b>才是。</p>
     <div class="eq">R1（分辨率）&nbsp; <b>Δ ≤ 2/P</b> &nbsp;&nbsp;&nbsp; R2（跨度）&nbsp; <b>K·Δ ≥ 2</b><br>
     baseline 把 Δ 焊死为 2/K &nbsp;⟹&nbsp; <b>K ≥ P</b> &nbsp;⟺&nbsp; <b>K · N<sub>TTD</sub> ≈ N<sub>t</sub></b></div>
-    <p style="margin-top:10px">这条交换律是<b>推出来的</b>，不是拟合的；而且实测对带宽 B、对扫描参数 θ<sub>t</sub>/θ<sub>p</sub> 全部不敏感。</p>
+    <p style="margin-top:10px">这条交换律是<b>推出来的</b>，不是拟合的；而且实测对带宽 B、对扫描参数 θ<sub>t</sub>/θ<sub>p</sub> 全部不敏感。
+    在两个独立配置上反推出的 Δ<sub>max</sub> 一致到 3%（2.06/P vs 2.00/P）。</p>
+    <div class="note" style="border-left-color:var(--ok);background:var(--ok-bg)">
+    <b>贡献是两半，而且可分离。</b>在 32 个 TTD（两个阶段都是）上：
+    <br>&nbsp;&nbsp;未补偿 PS + 他们的拆分，12 导频 → <span class="m">0.982±0.233</span>
+    <br>&nbsp;&nbsp;<b>补偿 PS</b> + 他们的拆分，12 导频 → <span class="m">4.742±0.344</span> &nbsp;<b>（补偿贡献 4.8×）</b>
+    <br>&nbsp;&nbsp;<b>补偿 PS + 我们的拆分，8 导频</b> → <span class="m">6.403±0.069</span> &nbsp;<b>（再 1.35×，导频少 1/3）</b>
+    <br>合计 <b>6.5 倍速率、导频少三分之一</b>，硬件两阶段完全相同。</div>
   </div>
 </section>
 
@@ -191,7 +198,7 @@
 </section>
 
 <section>
-  <div class="sh"><span class="n">03</span><h2>离线几何判据：20/20</h2><span class="r"></span></div>
+  <div class="sh"><span class="n">03</span><h2>离线几何判据：44/44</h2><span class="r"></span></div>
   <div class="fig">
     <h3>覆盖空洞（以阵列波束宽为单位） vs 速率</h3>
     <p class="cap">空洞由重标定焦点表离线算出——不需要信道模型、不需要噪声、不需要跑速率仿真。横轴对数。</p>
@@ -319,27 +326,89 @@
   </div>
 
   <div class="fig" style="margin-top:12px">
-    <h3>E · 同 N<sub>TTD</sub>、同 K 的正面对比</h3>
-    <p class="cap">百分比对齐的是<b>同一个 K</b> 下的满 TTD 上界（K 越多，上界本身也越高，必须同 K 比）。</p>
+    <h3>E · 单变量消融：只改相移器里的一项</h3>
+    <p class="cap">导频、查找表、信道实现全部相同，K=12 固定；服务波束也在同样的 N<sub>TTD</sub> 上。均值 ± 95% CI，200 条信道。</p>
     <div class="scroll"><table>
-      <thead><tr><th class="n">N<sub>TTD</sub></th><th class="n">K</th><th class="n">P/K</th>
-        <th class="n">A 满TTD</th><th class="n">B 共享·设计表</th><th class="n">E 共享·重标定</th></tr></thead>
+      <thead><tr><th class="n">L</th><th class="n">N<sub>TTD</sub></th><th class="n">他们的 PS</th><th class="n">补偿后</th><th class="n">增益</th><th class="n">他们 Fig 8</th></tr></thead>
       <tbody>
-        <tr><td class="n">64</td><td class="n">3</td><td class="n">1.33</td><td class="n">4.748</td><td class="n">2.031 · 43%</td><td class="n">3.527 · 74%</td></tr>
-        <tr class="hi"><td class="n">64</td><td class="n">4</td><td class="n">1.00</td><td class="n">4.831</td><td class="n">2.829 · 59%</td><td class="n">4.800 · 99%</td></tr>
-        <tr><td class="n">32</td><td class="n">3</td><td class="n">2.67</td><td class="n">4.748</td><td class="n">0.604 · 13%</td><td class="n">1.841 · 39%</td></tr>
-        <tr class="hi"><td class="n">32</td><td class="n">8</td><td class="n">1.00</td><td class="n">4.918</td><td class="n">1.680 · 34%</td><td class="n">4.793 · 97%</td></tr>
-        <tr><td class="n">16</td><td class="n">8</td><td class="n">2.00</td><td class="n">4.918</td><td class="n">0.917 · 19%</td><td class="n">3.124 · 64%</td></tr>
-        <tr class="hi"><td class="n">16</td><td class="n">16</td><td class="n">1.00</td><td class="n">4.968</td><td class="n">1.462 · 29%</td><td class="n">4.838 · 97%</td></tr>
+        <tr><td class="n">1</td><td class="n">256</td><td class="n">6.524±0.023</td><td class="n">6.538±0.019</td><td class="n"><b>1.00±0.00</b></td><td class="n">~6.5</td></tr>
+        <tr><td class="n">2</td><td class="n">128</td><td class="n">5.481±0.326</td><td class="n">5.383±0.329</td><td class="n"><b>0.98±0.08</b></td><td class="n">~5.0</td></tr>
+        <tr class="hi"><td class="n">4</td><td class="n">64</td><td class="n">2.313±0.411</td><td class="n">6.490±0.021</td><td class="n"><b>2.81±0.50</b></td><td class="n">~2.2</td></tr>
+        <tr class="hi"><td class="n">8</td><td class="n">32</td><td class="n">0.982±0.233</td><td class="n">4.613±0.357</td><td class="n"><b>4.70±1.17</b></td><td class="n">~0.6</td></tr>
+        <tr class="hi"><td class="n">16</td><td class="n">16</td><td class="n">1.212±0.202</td><td class="n">3.128±0.376</td><td class="n"><b>2.58±0.53</b></td><td class="n">~0.4</td></tr>
       </tbody>
     </table></div>
-    <p style="margin-top:10px"><b>16 个 TTD（比 DD-BS 少 16 倍）在 K=16 下拿到 4.838 bit/s/Hz——高于 baseline 自身
-    256 TTD、K=3 的 4.748。</b> 固定 (N<sub>TTD</sub>, K) 横着读，<span class="m">E−B</span> 隔离的是<b>判决规则</b>：
-    同一套硬件，29% → 97%。重标定查找表承担了大部分增益，而 P/K 定律规定了它什么时候被允许生效。</p>
-    <div class="red"><b>⚠ 表中 19%/31%/39% 一列不得用于与 OJ-COMS 对比。</b>
-    原文已核实（见 §07）：该臂忠实复现了他们的<b>架构</b>，但驱动它的是本项目的均匀梳子训练，
-    <b>不是</b>他们的扇区偏移 + 距离交织 + LS 精化流程。拿它去对比等于打稻草人。
-    要主张任何东西，必须先按原文实现他们的完整方案并复现其性能。</div>
+    <p style="margin-top:10px"><b>L=1 给出精确的 1.00±0.00</b>——无共享时那一项是全局常数，必须抵消。这是一个实验本可以失败而没有失败的零对照。
+    「他们的 PS」一列在五个点上都跟住了他们的 Fig 8。</p>
+    <div class="red"><b>两处必须写进论文的修正。</b>
+    ① <b>L=2 是 0.98±0.08，没有增益</b>——`N_iter=20` 时读到的 1.06~1.08× 是噪声。这反而让故事更准：
+    OJ-COMS 自己证明 L=2 可用、L≥3 不可用，<b>所以主张是关于 L≥4，即超出他们已发表工作点的共享</b>，不是笼统的改进。
+    ② L≥4 的增益是 <b>2.6~4.7×，相对 CI 约 20%</b>——真实（CI 都不含 1.0），但<b>不能报三位有效数字</b>。</div>
+  </div>
+
+  <div class="fig" style="margin-top:12px">
+    <h3>F · 导频分配：负开销</h3>
+    <p class="cap">补偿 PS 全程，只改 (N<sub>sec</sub>, K<sub>α</sub>) 拆分。参考 6.528。</p>
+    <div class="scroll"><table>
+      <thead><tr><th class="n">L</th><th class="n">N<sub>TTD</sub></th><th>拆分</th><th class="n">导频</th><th class="n">L/N<sub>sec</sub></th><th class="n">速率</th><th class="n">%参考</th></tr></thead>
+      <tbody>
+        <tr><td class="n">8</td><td class="n">32</td><td>他们的</td><td class="n">12</td><td class="n">2.00</td><td class="n">4.742±0.344</td><td class="n">73%</td></tr>
+        <tr class="hi"><td class="n">8</td><td class="n">32</td><td><b>我们的</b></td><td class="n"><b>8</b></td><td class="n">1.00</td><td class="n"><b>6.403±0.069</b></td><td class="n"><b>98%</b></td></tr>
+        <tr><td class="n">16</td><td class="n">16</td><td>他们的</td><td class="n">12</td><td class="n">4.00</td><td class="n">3.157±0.370</td><td class="n">48%</td></tr>
+        <tr class="hi"><td class="n">16</td><td class="n">16</td><td><b>我们的</b></td><td class="n"><b>14</b></td><td class="n">1.14</td><td class="n"><b>5.731±0.234</b></td><td class="n"><b>88%</b></td></tr>
+        <tr><td class="n">4</td><td class="n">64</td><td>他们的</td><td class="n">12</td><td class="n">1.00</td><td class="n">6.488±0.023</td><td class="n">99%</td></tr>
+        <tr><td class="n">4</td><td class="n">64</td><td>我们的</td><td class="n">4</td><td class="n">1.00</td><td class="n">6.350±0.034</td><td class="n">97%</td></tr>
+      </tbody>
+    </table></div>
+    <p style="margin-top:10px">L=8 和 L=16 处 <b>CI 不重叠</b>。他们的 (54) 是按<b>未补偿</b>扇区宽算 N<sub>sec</sub> 的，补偿后 (71) 就在距离维超支。
+    <b>L=4 处我们略低于他们</b>（6.350 vs 6.488，CI 几乎相接）——所以那里的老实说法是
+    <b>「用三分之一的导频拿到 97% 的速率」</b>，不是速率取胜。</p>
+  </div>
+
+  <div class="fig" style="margin-top:12px">
+    <h3>G · 速率 vs SNR &nbsp;<span style="font-weight:400;color:var(--ink3)">L=8，32 个 TTD（两阶段）</span></h3>
+    <p class="cap">四条线把两笔账分开：<b>MRT−oracle 的差 = 分组的代价</b>（全程 0.3–0.7%，几乎为零）；
+    <b>oracle−ours 的差 = 训练的代价</b>。导频数不同（8 vs 12），这是「各自最好配置」，不是等开销。</p>
+    <svg viewBox="0 0 620 300" role="img" aria-label="速率随 SNR 变化的四条曲线">
+      <rect x="58" y="30" width="181" height="220" fill="var(--bad-bg)"/>
+      <text class="lbl" x="148" y="46" text-anchor="middle" fill="var(--bad)">两条臂都失效</text>
+      <line class="gl" x1="58" y1="30"  x2="600" y2="30"/>
+      <line class="gl" x1="58" y1="74"  x2="600" y2="74"/>
+      <line class="gl" x1="58" y1="118" x2="600" y2="118"/>
+      <line class="gl" x1="58" y1="162" x2="600" y2="162"/>
+      <line class="gl" x1="58" y1="206" x2="600" y2="206"/>
+      <line class="gl" x1="58" y1="250" x2="600" y2="250"/>
+      <text class="al" x="50" y="33"  text-anchor="end">10</text>
+      <text class="al" x="50" y="77"  text-anchor="end">8</text>
+      <text class="al" x="50" y="121" text-anchor="end">6</text>
+      <text class="al" x="50" y="165" text-anchor="end">4</text>
+      <text class="al" x="50" y="209" text-anchor="end">2</text>
+      <text class="al" x="50" y="253" text-anchor="end">0</text>
+      <text class="al" x="58"  y="266" text-anchor="middle">0</text>
+      <text class="al" x="239" y="266" text-anchor="middle">10</text>
+      <text class="al" x="419" y="266" text-anchor="middle">20</text>
+      <text class="al" x="600" y="266" text-anchor="middle">30</text>
+      <text class="al" x="329" y="285" text-anchor="middle">SNR (dB)</text>
+      <text class="al" x="14" y="150" text-anchor="middle" transform="rotate(-90 14 150)">bit/s/Hz</text>
+
+      <path class="ln" stroke="var(--ink3)" stroke-dasharray="5 3" d="M 58 228 L 148 205 L 239 174 L 329 139 L 419 104 L 510 67 L 600 31"/>
+      <path class="ln" stroke="var(--ink2)" stroke-dasharray="2 3" d="M 58 229 L 148 206 L 239 175 L 329 140 L 419 105 L 510 68 L 600 32"/>
+      <path class="ln" stroke="var(--accent)" stroke-width="2.6" d="M 58 248 L 148 240 L 239 195 L 329 146 L 419 108 L 510 72 L 600 36"/>
+      <path class="ln" stroke="var(--bad)" stroke-width="2.6" d="M 58 250 L 148 248 L 239 245 L 329 236 L 419 227 L 510 222 L 600 210"/>
+      <g fill="var(--accent)">
+        <circle cx="239" cy="195" r="4"/><circle cx="329" cy="146" r="4"/>
+        <circle cx="419" cy="108" r="4"/><circle cx="600" cy="36" r="4"/>
+      </g>
+      <text class="lbl" x="596" y="22" text-anchor="end" fill="var(--ink3)">MRT 上界</text>
+      <text class="lbl" x="596" y="50" text-anchor="end" fill="var(--accent2)">本文，8 导频 — 98%</text>
+      <text class="lbl" x="596" y="200" text-anchor="end" fill="var(--bad)">AoSA 基线，12 导频 — 18%</text>
+    </svg>
+    <div class="red"><b>必须写进论文的局限：SNR 低于约 10 dB 时本文方法也塌</b>——0 dB 只有 9%，5 dB 只有 23%。
+    判决是在 <span class="m">M=1024</span> 个子载波上取 argmax，所以门限由<b>选择问题</b>决定，不是由阵列增益决定：
+    低 SNR 下 1024 个含噪样本的最大值就是噪声。</div>
+    <div class="note"><b>这同时修正了「估计器方向已关闭」那个结论。</b>
+    oracle/coarse = 1.02× 是在 <b>20 dB</b> 测的；0 dB 处同一个比值是 <b>11×</b>。
+    所以那个界<b>必须带着 SNR 一起引用</b>，低 SNR 角落是敞开的——而且被 OJ-COMS 自己的 MF 精化占着（他们的 Fig 10）。</div>
   </div>
 </section>
 
@@ -429,8 +498,13 @@
   <div class="sh"><span class="n">09</span><h2>剩余工作</h2><span class="r"></span></div>
   <div class="card">
     <ul>
-      <li><span class="chip bad">最高优先级</span> <b>实现 OJ-COMS 的完整方案作为真基线</b>并在其工作点复现，
-      然后叠加 fc 补偿做同 (N<sub>TTD</sub>, K<sub>total</sub>) 对比。这一步决定本项目是否还有可发表增量。</li>
+      <li><span class="chip bad">阻塞</span> <b>给 OJ-COMS 作者写信</b>核实 Table 3 的 α′<sub>p</sub>=0.158
+      与其式 (69) 的 0.5809 不一致（换成 0.158 会让 L=2 的速率摆动 <b>57 倍</b>，且全部导频指向搜索区之外）。
+      通讯作者 anasir@kfupm.edu.sa。</li>
+      <li><b>硬件核算表</b>：元件数 × 延迟量程 × 所需比特，对照可实现器件 1.47–508 ps。这是 §13 那个「140 ns 做不出来」的收尾。</li>
+      <li><b>低 SNR 段</b>：要么按局限如实写，要么与他们的 MF 精化正面比——但那是他们的地盘，进去要有把握。</li>
+      <li><s>实现 OJ-COMS 完整方案作为基线</s>（门有保留通过，Fig 8 五点跟住） ·
+      <s>服务波束接到同一套硬件</s> · <s>N_iter=200 + 误差棒</s> · <s>速率–SNR 曲线</s> —— 已完成</li>
       <li><b>标准曲线</b>：速率–SNR、速率–N<sub>TTD</sub>，以及重标定 / 梳子修正的消融。</li>
       <li><b>硬件成本核算表</b>：元件数 × 量程 × 所需比特，对照可实现器件（1.47 ps – 508 ps）。</li>
       <li><b>Θ 的闭式</b>：P/K* = 1.19 ± 0.04 目前是实测常数。可选——maxgap 判据已能离线算出边界，闭式是加分不是必需。</li>

@@ -2019,3 +2019,167 @@ At **L = 8: 32 TTDs, an 8x reduction, in BOTH stages**, ceiling 6.603:
 And the estimator bound of §31.1 holds under the correction: ours reads 1.02-1.03x
 from the oracle wherever the allocation is right, 1.12x at L=16. The recalibrated
 lookup remains within 2-3% of being *told* the answer.
+
+---
+
+## 34. FINAL NUMBERS (N_iter = 200, 95% CI) — and two corrections the CIs force
+
+### 34.1 Rate vs SNR at L=8, 32 TTDs in both stages (`rate_vs_snr.m`)
+
+| SNR | MRT | oracle | ours, 8 pilots | % ceil | theirs, 12 pilots | % ceil |
+|---|---|---|---|---|---|---|
+| 0 | 1.000 | 0.977 | 0.088+-0.025 | **9%** | 0.023+-0.007 | 2% |
+| 5 | 2.057 | 2.023 | 0.469+-0.082 | **23%** | 0.083+-0.030 | 4% |
+| 10 | 3.459 | 3.417 | 2.522+-0.136 | 74% | 0.233+-0.062 | 7% |
+| 15 | 5.028 | 4.983 | 4.718+-0.055 | 95% | 0.623+-0.165 | 13% |
+| 20 | 6.658 | 6.612 | 6.445+-0.023 | 97% | 1.027+-0.243 | 16% |
+| 25 | 8.309 | 8.263 | 8.082+-0.082 | 98% | 1.275+-0.302 | 15% |
+| 30 | 9.967 | 9.921 | 9.738+-0.098 | 98% | 1.822+-0.383 | 18% |
+
+- **The oracle sits 0.3-0.7% below MRT at every SNR.** Grouping the serving beam is
+  free across the whole range, confirming §33.2 beyond the single 20 dB slice.
+- Ours saturates at **97-98% of the ceiling from 20 dB up**; theirs never passes 18%.
+- **Below ~10 dB OURS COLLAPSES TOO** — 9% at 0 dB, 23% at 5 dB. This is a
+  limitation, and it goes in the paper. The decision is an `argmax` over
+  `M = 1024` subcarriers, so its threshold is set by the **selection problem**,
+  not by array gain: at low SNR the largest of 1024 noisy samples is noise.
+
+### 34.2 CORRECTION to §31.1 — that bound was SNR-specific
+
+§31.1 concluded "no estimator can recover anything" from oracle/coarse = 1.02-1.03x.
+**Measured at 20 dB.** At 0 dB the same ratio is 0.977/0.088 = **11x**. So there is
+large estimator headroom at low SNR, and the closure applies only to the
+high-SNR regime. OJ-COMS's own MF refinement (their Sec VI, Fig. 10) targets
+exactly the limited-pilot / low-SNR corner — so that direction is open, and
+occupied by them. State the bound with its SNR attached.
+
+### 34.3 CORRECTION to §33.3 — L=2 shows NO gain, and the earlier gains were over-precise
+
+`ablation_ps`, shared serving, mean +/- 95% CI over 200 channels:
+
+| L | N_TTD | their PS | compensated | gain | was (N_iter=20) |
+|---|---|---|---|---|---|
+| 1 | 256 | 6.524+-0.023 | 6.538+-0.019 | **1.00+-0.00** | 1.00x |
+| 2 | 128 | 5.481+-0.326 | 5.383+-0.329 | **0.98+-0.08** | 1.08x |
+| 4 | 64 | 2.313+-0.411 | 6.490+-0.021 | **2.81+-0.50** | 3.70x |
+| 8 | 32 | 0.982+-0.233 | 4.613+-0.357 | **4.70+-1.17** | 4.24x |
+| 16 | 16 | 1.212+-0.202 | 3.128+-0.376 | **2.58+-0.53** | 3.80x |
+
+**`L=2` is 0.98+-0.08 — no gain.** The 1.06-1.08x of §33.3 was noise. This is not a
+weakness but a sharper story: OJ-COMS show `L=2` works and `L>=3` does not, and
+that is exactly where the compensation starts to matter. **The claim is about
+`L >= 4`**, i.e. sharing *beyond* their published operating point, and it should be
+stated that way rather than as a blanket improvement.
+
+Gains at `L >= 4` are **2.6-4.7x with ~20% relative CI** — real (no CI includes
+1.0) but not quotable to three digits. The `L=1` null control remains exactly
+1.00+-0.00.
+
+### 34.4 The allocation rule holds, with non-overlapping CIs
+
+`sector_alloc`, shared serving, reference 6.528:
+
+| L | split | rate | % ref |
+|---|---|---|---|
+| 8 | theirs, 12 pilots | 4.742+-0.344 | 73% |
+| 8 | **ours, 8 pilots** | **6.403+-0.069** | **98%** |
+| 16 | theirs, 12 pilots | 3.157+-0.370 | 48% |
+| 16 | **ours, 14 pilots** | **5.731+-0.234** | **88%** |
+| 4 | theirs, 12 pilots | 6.488+-0.023 | 99% |
+| 4 | **ours, 4 pilots** | **6.350+-0.034** | **97%** |
+
+At L=8 and L=16 the CIs do not overlap. At L=4 ours is **slightly below** theirs
+(6.350 vs 6.488, CIs nearly touching) — so the honest statement there is *97% of
+the rate for a third of the pilots*, not a rate win.
+
+### 34.5 The headline, decomposed
+
+At **L = 8: 32 TTDs in both stages**, ceiling 6.5:
+
+| | pilots | rate | |
+|---|---|---|---|
+| uncompensated PS + their split | 12 | 0.982+-0.233 | |
+| compensated PS + their split | 12 | 4.742+-0.344 | **4.8x from compensation** |
+| **compensated PS + our split** | **8** | **6.403+-0.069** | **1.35x more, on 33% fewer pilots** |
+
+**Combined: 6.5x the rate with a third fewer pilots, on identical hardware in both
+stages** — and the two halves are separable, which is what makes them two
+contributions rather than one bundled claim.
+
+---
+
+## 35. The `alpha'p` question is CLOSED — by the reproduction, not by the authors
+
+The OJ-COMS source is not available and the authors are not reachable. **This is
+not a blocker, and §26.1's "should be raised with the authors" was already
+overtaken by the data.**
+
+The value is settled empirically, on four independent grounds:
+
+1. **Their own (69)** gives `U = 0.5809` for their stated `[alpha_min, alpha_max]`.
+2. **0.5809 sweeps `[+0.0025, +0.0999]`** — `[alpha_min, alpha_max]` to four
+   digits — while **0.158 sweeps `[-0.387, -0.361]`**, entirely outside the search
+   region, so no user is reachable and the rate measures nothing.
+3. **0.5809 is also the DD-BS baseline's own `alpha_p = 1859/3200`**, and their
+   `alpha't = -0.533` matches the baseline's `-427/800 = -0.534`.
+4. **Decisively: with 0.5809 the reproduction tracks their published Fig. 8 at all
+   five sub-array sizes** (6.52/6.5, 5.48/5.0, 2.31/2.2, 0.98/0.6, 1.21/0.4).
+   With 0.158 the L=2 rate swings by up to 57x and nothing matches.
+
+**Reproducing a published figure is stronger evidence than an email would have
+been**, because it is checkable by a reviewer. Not having the code is also the
+norm rather than a handicap: the scheme was rebuilt from the published equations
+and Table 3, which is exactly what a reproduction is supposed to do.
+
+### How to write it — state it, justify it, do not accuse
+
+> We reproduce [X]'s scheme from their published equations and Table III. We note
+> that the tabulated `alpha'_p = 0.158` is inconsistent with their own (69), which
+> yields `U = 0.5809` for the stated distance interval; with 0.158 the focusing
+> trajectory (66) sweeps `alpha in [-0.387, -0.361]`, entirely outside the target
+> range `[0.0025, 0.1]`, so no user is reachable. We therefore adopt the value
+> implied by (69), which reproduces their reported Fig. 8 across all tested
+> sub-array sizes, and attribute the discrepancy to a typographical error.
+
+Neutral, verifiable, and it pre-empts the obvious reviewer question. Also report
+the 0.158 result in an appendix table so the reader can see why it cannot stand.
+
+---
+
+## 36. LIMITATION NOT YET SOLVED — sharing divides the COUNT, not the RANGE
+
+The hardware bill has two halves and this project has so far paid attention to one.
+
+| beam | `theta_t` | delay range | line per element |
+|---|---|---|---|
+| DD-BS baseline training | 31.73 | 134.9 ns | **40.5 m** |
+| **their sectors, and ours** | -31.8 | **135.2 ns** | **40.6 m** |
+| sweep slowed, `s = 1/2` | -15.9 | 67.6 ns | 20.3 m |
+| `s = 1/4` | -7.9 | 33.6 ns | 10.1 m |
+| `s = 1/8` | -4.0 | 17.0 ns | 5.1 m |
+| serving beam (focus only) | — | 4.2 ns | 1.3 m |
+| **realizable devices (§13 survey)** | — | **1.47-508 ps** | — |
+
+**Sharing divides the element COUNT by `L`; it does not touch the RANGE each
+surviving element must cover.** Our L=8 design still needs 135 ns — about **270x
+the best device in the survey**, or 40 m of line per element. A 32-element array
+whose elements each need 40 m of line is not buildable, and **§13's
+unrealizability problem is therefore NOT solved by anything in §26-§34.** Claiming
+an "8x hardware reduction" without this qualification would be false.
+
+What does reduce the range is §14's knob: slowing the angular sweep scales
+`theta_t`, and the range with it, at the cost of pilots. **Sharing and sweep-rate
+are independent axes**, so the design space is three-dimensional:
+
+    N_TTD = Nt/L              element count      <- sharing (sec 27)
+    range ~ |theta_t| ~ s     per-element range  <- sweep rate (sec 14)
+    K = N_sec * K_alpha       overhead           <- pays for both
+
+`hw_budget.m` measures it at L=8, holding `N_sec = L` (the §27 rule) and sweeping
+`K_alpha`, since slowing the sweep thins the strips and the distance dimension has
+to absorb it. The last column is how far each point still sits from a 508 ps
+device.
+
+**The honest outcome may be that no point on the grid is realizable today.** If so
+that is the finding — quantify the gap and name the device technology that would
+close it — not a reason to report element counts alone and hope no one asks.
