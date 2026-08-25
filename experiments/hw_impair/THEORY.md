@@ -2183,3 +2183,58 @@ device.
 **The honest outcome may be that no point on the grid is realizable today.** If so
 that is the finding — quantify the gap and name the device technology that would
 close it — not a reason to report element counts alone and hope no one asks.
+
+---
+
+## 37. The three-way budget, measured — and a realizable-ish operating point
+
+`hw_budget.m` after the §36 fix. L=8 (32 TTDs, both stages), `N_sec = 8`, reference
+6.542. `s` scales the sweep strength `S` alone; `theta_M` held.
+
+| `s` | `S` | `theta_t` | range | line/element | pilots | rate | % ref | x over 508 ps |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 34.85 | -31.20 | 132.6 ns | 39.78 m | 8 | 6.424 | **98%** | 261x |
+| 1 | | | | | 32 | 6.532 | 100% | 261x |
+| **1/2** | 17.42 | -15.10 | **64.2 ns** | 19.25 m | **8** | 6.387 | **98%** | **126x** |
+| 1/2 | | | | | 32 | 6.512 | 100% | 126x |
+| 1/4 | 8.71 | -7.05 | 30.0 ns | 8.99 m | 8 | 6.123 | 94% | 59x |
+| 1/4 | | | | | 32 | 6.474 | **99%** | **59x** |
+| 1/8 | 4.36 | -3.02 | 12.9 ns | 3.86 m | 8 | 5.260 | 80% | 25x |
+| **1/8** | | | | | **32** | 6.241 | **95%** | **25x** |
+
+### 37.1 Halving the sweep is free
+
+`s = 1/2` gives **98% at 8 pilots — identical to `s = 1`** while halving the delay
+range. A 2x hardware relaxation for nothing. Beyond that it costs pilots: `s = 1/4`
+needs 32 pilots for 99% (8 pilots gets 94%), and `s = 1/8` needs 32 for 95%.
+
+### 37.2 The frontier, and what it changes
+
+| | elements | range each | total line | pilots |
+|---|---|---|---|---|
+| DD-BS baseline | 256 | 39.78 m | **10 189 m** | 3 |
+| OJ-COMS, L=2 | 128 | 39.78 m | 5 092 m | 12 |
+| ours, L=8, `s=1` | 32 | 39.78 m | 1 273 m | 8 |
+| **ours, L=8, `s=1/8`** | **32** | **3.86 m** | **124 m** | **32** |
+
+**83x less transmission line than the baseline, for 32 pilots instead of 3.**
+
+This does not make DDBS training realizable with an integrated 508 ps TTD — 12.9 ns
+is still 25x that. But it moves the requirement from **40 m of line per element**,
+which is not a design, to **3.9 m**, which is a switched-line or fibre delay
+network: bulky and lossy, but a thing that exists. **State it that way.** The gap is
+quantified and the technology class that closes it is named; claiming
+"realizable" would be false.
+
+### 37.3 A defect in MY distance interleaving, not in their scheme
+
+`K_alpha = 2` is **worse than `K_alpha = 1` in all four `s` rows** (95<98, 95<98,
+90<94, 74<80). Systematic, not noise. Cause: §23.5's interleaving places `alpha't`
+at `linspace(-spread, +spread, K_alpha)` around the (70) optimum, so `K_alpha = 1`
+sits exactly on the optimum while `K_alpha = 2` gives `+/-spread` and lands on
+neither. `K_alpha = 4` recovers by covering more.
+
+The fix is to include the centre point, and it is a defect in the interpretation
+§23.5 flagged as unverified — **not** a property of OJ-COMS's scheme, which must
+not be blamed for it. Worth fixing before the final figure, since it makes the
+`K_alpha` axis read as non-monotonic when it should not be.
