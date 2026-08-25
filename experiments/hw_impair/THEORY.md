@@ -2238,3 +2238,57 @@ The fix is to include the centre point, and it is a defect in the interpretation
 §23.5 flagged as unverified — **not** a property of OJ-COMS's scheme, which must
 not be blamed for it. Worth fixing before the final figure, since it makes the
 `K_alpha` axis read as non-monotonic when it should not be.
+
+---
+
+## 38. Interleave fixed — the K_alpha axis is monotone, and the frontier closes on a law
+
+`hw_budget.m` after the §37.3 fix.
+
+**Self-check passed:** all four `K_alpha = 1` rows reproduce exactly (6.424, 6.387,
+6.123, 5.260), so the change touched only what it was meant to.
+
+| `s` | range | K_alpha=1 | K_alpha=2 (was) | **K_alpha=2 (now)** | K_alpha=4 |
+|---|---|---|---|---|---|
+| 1 | 132.6 ns | 98% | 95% | **100%** | 100% |
+| 1/2 | 64.2 ns | 98% | 95% | **100%** | 100% |
+| 1/4 | 30.0 ns | 94% | 90% | **98%** | 100% |
+| 1/8 | 12.9 ns | 80% | 74% | **92%** | 97% |
+
+**Monotone in `K_alpha` in every row.** The non-monotonicity was entirely the
+placement artifact, as §37.3 diagnosed — nothing to do with OJ-COMS's scheme.
+
+### 38.1 The >=95% frontier, and the law on it
+
+| `s` | range | line/element | x over 508 ps | pilots | rate |
+|---|---|---|---|---|---|
+| 1 | 132.6 ns | 39.78 m | 261x | 8 | 98% |
+| **1/2** | **64.2 ns** | 19.25 m | 126x | **8** | **98%** |
+| 1/4 | 30.0 ns | 8.99 m | 59x | 16 | 98% |
+| **1/8** | **12.9 ns** | **3.86 m** | **25x** | **32** | **97%** |
+
+    range x pilots:  1061 -> 514 -> 480 -> 413  ns-pilots
+
+**The first halving is free** (1061 → 514 at the same 8 pilots). **After that,
+delay range and pilot count trade one-for-one**: halving the range doubles the
+pilots, and `range x K` holds at ~450 ns-pilots to within 15%.
+
+That is the closing statement of the hardware analysis: a designer picks a TTD
+technology, reads its range off the datasheet, and the law gives the pilot budget —
+or picks a pilot budget and gets the range they must build to.
+
+### 38.2 What to claim, and what not to
+
+| | elements | range each | total line | pilots |
+|---|---|---|---|---|
+| DD-BS baseline | 256 | 39.78 m | 10 184 m | 3 |
+| OJ-COMS, L=2 | 128 | 39.78 m | 5 092 m | 12 |
+| **ours, L=8, `s=1/8`** | **32** | **3.86 m** | **124 m** | **32** |
+
+**82x less transmission line than the baseline, for 32 pilots instead of 3.**
+
+Still **25x beyond an integrated 508 ps TTD**, so *realizable* remains the wrong
+word. The correct claim is that the requirement moves from **40 m of line per
+element**, which is not a design, to **3.9 m**, which is a switched-line or fibre
+delay network — bulky and lossy, but a thing that exists. Naming the technology
+class and the residual factor is the honest form; "we make DDBS practical" is not.
