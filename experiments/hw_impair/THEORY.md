@@ -2292,3 +2292,333 @@ word. The correct claim is that the requirement moves from **40 m of line per
 element**, which is not a design, to **3.9 m**, which is a switched-line or fibre
 delay network — bulky and lossy, but a thing that exists. Naming the technology
 class and the residual factor is the honest form; "we make DDBS practical" is not.
+
+---
+
+## 39. Is K=32 a floor? — my prediction was WRONG, and the right answer is a two-constraint law
+
+`pareto_LsK.m`. **§38's prediction ("halving L halves the pilots at unchanged
+range") is refuted.** At `s = 1/8` and equal pilots, MORE sharing is as good or
+better: `K=8` gives 76% at L=4 and **80% at L=8**; `K=16` gives 92% at both.
+Spending TTDs does **not** buy pilots back at a small delay range.
+
+### 39.1 First: the `L=2` rows are invalid, by a rule I wrote myself
+
+The script sets `N_sec = L`, so at `L=2` it used `N_sec = 2` — below the `K >= 3`
+floor its own header prints two lines earlier. Every `L=2` row (70%, 79%, 81%,
+64%, 72%, 89%, 42%, 51%, 60%) is therefore a configuration that violates the
+baseline's own DDBS floor, not evidence about sharing. **Discard them.** `N_sec = L`
+is the *sharing* lower bound; the *absolute* floor `N_sec >= 3` binds first at
+small L and I did not apply it.
+
+### 39.2 The law that fits every valid cell
+
+    K_min = max( L , 3 , C/s )        with C ~ 4
+
+| `s` | L | predicted | measured >=95% |
+|---|---|---|---|
+| 1 | 4 | 4 | **4 pilots** |
+| 1 | 8 | 8 | **8 pilots** |
+| 1/4 | 4 | 16 | >16 (grid ends at 16, reads 94%) |
+| 1/4 | 8 | 16 | **16 pilots** |
+| 1/8 | 4 | 32 | >16 (grid ends at 16, reads 92%) |
+| 1/8 | 8 | 32 | **32 pilots** |
+
+**Two constraints, and whichever is larger binds:**
+
+- **sharing** (§27): `N_sec >= L`, because the comb must be finer than the
+  sub-array beam. Binds at **large `s`**.
+- **coverage**: `K * s >= C`, because a pilot's 2-D `(theta, alpha)` reach scales
+  with the sweep strength `S ~ s`. Binds at **small `s`**.
+
+This is §18's C1/C2 pair again — withdrawn there because I had tied the two
+variables together and could not separate them. Untied, both are real; what was
+wrong in §18 was the *claim that either alone explains the data*, not the
+constraints themselves.
+
+### 39.3 The answer to the question
+
+**At `s = 1/8` (12.9 ns, 25x over a 508 ps device), K = 32 IS the floor, and it is
+not reducible by spending TTDs** — the coverage constraint binds there and it does
+not contain `L`. Conversely:
+
+- want **8 pilots**? Then `s >= 1/2`, i.e. accept a 64.2 ns range (126x over device).
+- want **12.9 ns**? Then pay 32 pilots, at any TTD count from 32 up.
+
+So the design space is **not** a freely tradeable cube. It is essentially
+**2-D in (delay range, pilots)**, with **TTD count almost free** down to L=8:
+32 TTDs perform as well as 64 or 128 at equal `(s, K)`. That is a *better* result
+than the one I predicted — the 8x hardware reduction costs nothing, and the only
+real currency is range-vs-pilots, which is exactly the `range x K ~ 450 ns-pilots`
+law of §38.1.
+
+**What is untested:** `L = 4` at `K = 32`, and any `L = 2` row with `N_sec >= 3`.
+Neither changes the answer above, but the paper's frontier table should either
+include them or state the grid's edge honestly.
+
+---
+
+## 40. DERIVED — the coverage constant, the mechanism four hypotheses missed, and a correction to §39
+
+§39 left `K_min = max(L, 3, C/s)` with **`C ~ 4` fitted on six cells** and no
+account of where it comes from. §15-§17 made four attempts at the mechanism and
+all four were refuted, leaving the causal chain
+
+    sharing -> residual phase -> (???) -> focus shift -> coverage hole -> failure
+
+open in the middle. This section closes it. The missing ingredient is one term:
+**the grating-lobe period of the focus map is frequency-dependent.**
+
+Everything below is reproducible offline — no channel model, no baseline code,
+only `ddbs_beam_arch` and `actual_focus`, which are self-contained. The NumPy
+port is in `experiments/theory/`; the end-to-end MATLAB check is
+`kmin_theory.m`.
+
+### 40.1 The focus locus in closed form — including the alias term
+
+For a pilot with TTD parameters `(theta_t, alpha_t)`, PS parameters
+`(theta'p, alpha'p)` and `L`-fold sharing with the (31) LS coefficients:
+
+    theta_m = < u_m*theta'p + rho_theta*theta_t >_{2*u_m}      u_m = fc/f_m
+    alpha_m =   u_m*alpha'p + rho_alpha*alpha_t
+
+`<x>_p` reduces `x` mod `p` into `[-p/2, p/2)`. **The modulus is `2*u_m = 2*fc/f_m`,
+not 2** — the grating period of a `lambda_c/2` array *evaluated at `f_m`*, so it
+breathes across the band. Every earlier attempt used a frequency-flat period or
+no alias at all; §23 recorded "the closed-form lookup dropped the alias term of
+(39)-(40)" without identifying what the term was.
+
+**Verification** (`verify_closed_form.py`), `L = 1`, over the 899 subcarriers with
+`|theta| <= 0.85`:
+
+    max |theta_measured - theta_closed_form| = 1.3e-4   (search grid 4.9e-4)
+    max |alpha_measured - alpha_closed_form| = 1.2e-4   (search grid 2.4e-4)
+
+Exact to the resolution of `actual_focus`'s own search. At `L = 8` the `alpha`
+axis still matches to 1.4e-3 but `theta` shifts by a median of **0.23-0.46** —
+that shift is precisely the sharing-induced focus displacement §16 measured
+end-to-end. **The closed form is exact for the ideal array and is the reference
+against which the sharing shift is defined.**
+
+### 40.2 The locus is a pencil of lines through one pivot
+
+On the stretch of band where grating order `j` is active,
+`theta_m = u_m*(theta'p - 2j) + rho_theta*theta_t`. Eliminating `u_m`:
+
+    alpha = alpha_piv + [alpha'p/(theta'p - 2j)]*(theta - theta_piv)
+    (theta_piv, alpha_piv) = (rho_theta*theta_t, rho_alpha*alpha_t)
+
+**The focus locus is a pencil of straight lines through a single pivot, one line
+per grating order.** The pivot is `j`-independent, so all branches of one pilot
+radiate from the same point. By OJ-COMS's (63),
+
+    theta_piv = theta_M - (fc/fH)*S
+
+so **`S` — the sweep strength our `s` scales — IS the pivot distance from the
+sector target `theta_M`.** That is the geometric meaning of the sweep-rate knob,
+invisible in every parameterization used before this section.
+
+### 40.3 What `s` buys: angular traversals, at constant distance coverage
+
+**(a) The `alpha` coverage of one pilot is invariant in `s`.** Exactly one order is
+visible per subcarrier (the modulus `2*u_m` is within 9% of the visible width 2),
+so the branches *partition* the sweep budget `Lambda = fc/fL - fc/fH`. `alpha` is
+not aliased (its period is `2/d = 400`, four thousand times the search range), so
+it advances monotonically by `alpha'p*Lambda` whatever the branch structure — and
+(69) sets `alpha'p = H/Lambda`. Hence
+
+    alpha coverage per pilot = H,   exactly, at every sweep rate.
+
+**(b) `theta` is traversed `n_tr` times, and `n_tr` is proportional to `s`.**
+
+    n_tr = |q|*Lambda/2,   q = theta'p - 2*round((theta'p + theta_piv)/2)
+         ~ (fc/fH)*S*Lambda/2   ∝  s
+
+`q` lives on a lattice of spacing 2, so `n_tr` carries a quantization jitter that
+is negligible at large `s` (30.35 vs 31.17, 2.6%) and material at small `s`
+(2.356 vs 3.021, 22%). **Use the lattice-exact form; the `∝ s` form is the
+approximation.**
+
+Predicted branch count `~ n_tr + 1` against the orders recovered from the focus
+table (`alias_orders.py`):
+
+| `s` | predicted | orders `j` actually visible |
+|---|---|---|
+| 1 | 3.5 | **-2, -1, 0** (3) |
+| 1/4 | 1.5 | **11** (1) |
+| 1/8 | 1.2 | **13** (1) |
+
+> A fast sweep crosses the angular window many times and samples distance finely
+> at each crossing. A slow sweep crosses it less than once, covering the whole
+> distance range over a slice of angle. **The distance range is covered once
+> either way. What `s` buys is angular traversals.**
+
+### 40.4 The coverage condition
+
+Angular sampling within a traversal is far finer than a beamwidth (adjacent
+subcarriers move the focus by `<< 2/Nt`), so **theta is never the binding axis;
+alpha is**. At a given `theta_u` the pilots whose angular slice covers it each
+contribute one `alpha` sample, and those samples span `H`. Requiring consecutive
+samples to fall within the focusing depth `d_alpha`:
+
+    N_sec * n_tr  >=  H / (2*d_alpha)
+
+**It is `N_sec`, not `K`.** Sector shifts translate the pencil in `theta`, which
+at fixed `theta` translates it in `alpha` — that is what supplies the `alpha`
+ladder. `K_alpha` does something else entirely (§40.6).
+
+`d_alpha` is the near-field focusing depth, set by a `pi/2` edge-of-aperture
+quadratic phase error:
+
+    kc*(Nt*d/2)^2*d_alpha = pi/2   =>   d_alpha = 2/(d*Nt^2)   = 6.10e-3
+
+The numerically exact `|g| = 0.9` contour is 5.94e-3, so the `pi/2` criterion is
+good to **2.8%**. The threshold is therefore
+
+    H/(2*d_alpha) = H*d*Nt^2/4 = 7.99   (8.21 with the numeric d_alpha)
+
+and in sweep-rate form, substituting `S = s*1.76*gamma*fL*M/(Nt*B)` and
+`Lambda = fc*B/(fL*fH)`:
+
+    N_sec * s >= C,     C = H*Nt*xi_H^2/(1.76*gamma*M*d_alpha)
+                          = H*d*Nt^3*xi_H^2/(3.52*gamma*M)
+                          = 2.96          (3.04 with the numeric d_alpha)
+
+**`B` cancels.** That is not a convenience — it *derives* §15's falsified
+prediction. §15 predicted `K/P ∝ B/fc` and measured `K_min = 9` at
+`B = 2.5, 5, 10 GHz`; the invariance was filed as an unexplained falsification.
+It follows from `Lambda ∝ B` cancelling the `1/B` in `S`.
+
+### 40.5 The test: 12 cells, zero fitted parameters
+
+Coverage statistic (`cover.py`): for each user,
+`g = max over (pilot, subcarrier)` of the narrowband focusing gain at `fc`
+between the user and the **recalibrated** focus-table entry. Against the twelve
+measured §38 rates it scores **Spearman 0.907**, with one inversion in the
+marginal pair (`P=0.925 -> 98%` vs `P=0.936 -> 92%`). It separates the clear
+cases and not the marginal ones — treat it as an ordering statistic.
+
+`collapse.py`, `K_alpha = 1`, `L = 8`, sorted by the derived quantity:
+
+| `s` | `N_sec` | `n_tr` | `N_sec*n_tr` | `P(g>0.9)` | derived call |
+|---|---|---|---|---|---|
+| 1/8 | 8 | 0.1977 | 1.58 | 0.287 | fail |
+| 1/8 | 12 | 0.1977 | 2.37 | 0.418 | fail |
+| 1/8 | 16 | 0.1977 | 3.16 | 0.550 | fail |
+| 1/4 | 8 | 0.5423 | 4.34 | 0.559 | fail |
+| 1/4 | 12 | 0.5423 | 6.51 | 0.670 | fail |
+| **1/4** | **16** | 0.5423 | **8.68** | **0.906** | **PASS** |
+| 1/2 | 8 | 1.2104 | 9.68 | 0.921 | PASS |
+| 1/2 | 12 | 1.2104 | 14.52 | 0.976 | PASS |
+| 1/2 | 16 | 1.2104 | 19.37 | 1.000 | PASS |
+| 1 | 8 | 2.5467 | 20.37 | 0.961 | PASS |
+| 1 | 12 | 2.5467 | 30.56 | 0.980 | PASS |
+| 1 | 16 | 2.5467 | 40.75 | 0.992 | PASS |
+
+**12/12.** The derived threshold 8.21 falls between the last failure (6.51,
+`P = 0.670`) and the first pass (8.68, `P = 0.906`). `P` is monotone in
+`N_sec*n_tr` across the whole table but for one Monte-Carlo-sized inversion
+(19.37 -> 1.000 vs 20.37 -> 0.961). **Nothing here was tuned against the rate
+table**; every quantity is a system parameter or comes from OJ-COMS's own
+(63)/(69).
+
+**Forward prediction, then tested** (`confirm.py`). At `s = 1/8`,
+`n_tr = 0.1977`, so sectors alone need `N_sec >= 8.21/0.1977 = 41.5`:
+
+| `N_sec` at `s=1/8`, `Ka=1` | `N_sec*n_tr` | `P(g>0.9)` |
+|---|---|---|
+| 24 | 4.74 | 0.815 |
+| 32 | 6.33 | 0.908 |
+| **42** | **8.30** | **0.959** |
+| 48 | 9.49 | 0.972 |
+
+The crossing lands where predicted.
+
+### 40.6 `K_alpha` is a different primitive — and it is why the recalibrated lookup is necessary
+
+The same run shows `N_sec = 8, K_alpha = 2` (`K = 16`) reaching `P = 0.935` at
+`N_sec*n_tr = 1.58`, five times below the threshold. So `K_alpha` is **not**
+substitutable for sectors, and §39's `K*s >= C` conflated two mechanisms.
+
+What it actually does (`diag_clamp.py`): the interleave offsets `alpha_t` by
+`0.087`, which drags the second pilot's designed `alpha` locus to
+`[-0.0844, 0.0130]` — **below the realizable range for 87% of its sweep**. The
+recalibrated lookup pins those subcarriers to the grid floor `alpha_min`:
+
+    Ka=2 pilot 1: designed alpha -0.0844..0.0130 | reported 0.0025..0.0200
+                  40% of subcarriers at alpha_min, spread over a theta span of
+                  0.262 -- two thirds of that pilot's 0.395 angular slice.
+
+So the "distance-interleaved" pilot is really a **flat angular scan at
+`alpha_min`**, a coverage primitive the diagonal pencil cannot produce. `diag_ka.py`
+confirms it is not a user-density effect: the gain improves near-uniformly across
+all `alpha` deciles up to `alpha = 0.0123` (`r >= 46 m`) and improves least in the
+top decile (`r < 18 m`), which an `alpha_min` beam cannot reach.
+
+**And it only works because of the recalibration** (`diag_recal.py`, `P(g>0.9)`):
+
+| | `Ka=1` | `Ka=2` | `Ka=4` |
+|---|---|---|---|
+| recalibrated lookup, `s=1/8` | 0.287 | **0.935** | 0.979 |
+| nominal lookup, `s=1/8` | 0.243 | **0.456** | 0.689 |
+
+Steered at its nominal (negative) `alpha`, the interleaved pilot is nearly
+useless. **This is the first mechanistic account of why the recalibrated lookup is
+necessary** — §20.5 asserted it ("free, algorithm-only, and *necessary*") from the
+85%-of-foci-move measurement, with no mechanism behind it.
+
+Design consequence, quantified: at `s = 1/8`, closing the `alpha` gap costs
+`K ~ 42` by sectors and `K = 16` by interleaving — **interleaving is ~2.6x
+cheaper**, which is a derived justification for OJ-COMS's distance-interleaving
+component and for our `N_sec`/`K_alpha` split.
+
+### 40.7 Correction to §39, and the §18 mistake repeating
+
+§39.2's `K_min = max(L, 3, C/s)` with `C ~ 4` must be restated:
+
+    N_sec >= L                       sharing            (sec 27, unchanged)
+    N_sec >= 3                       DDBS floor         (unchanged)
+    N_sec * n_tr >= H*d*Nt^2/4       coverage           (DERIVED here)
+    K = N_sec * K_alpha, and K_alpha buys coverage by a separate mechanism
+                                     at ~2.6x the efficiency of sectors (sec 40.6)
+
+The coverage constraint was attributed to `K` because `hw_budget.m` held
+`N_sec = 8` and swept `K_alpha`, so `K` and `K_alpha` were the same axis — **the
+§18 mistake exactly: an invariant fitted on a locus where the candidate variables
+are tied.** The rule written down in §18 was not applied to §39. The fitted
+`C ~ 4` was also just the upper end of a factor-of-two bracket; the derived 2.96
+sits inside `(2, 4]`.
+
+§39.3's headline answer survives: at `s = 1/8` with `L = 8`, `K = 32` is a floor
+and spending TTDs does not lower it. The reason is now stated correctly — the
+coverage constraint contains `N_sec` and `n_tr`, neither of which contains `L`.
+
+### 40.8 What §40 does NOT derive
+
+- **The `maxgap <~ 3` criterion** (§21). Still a numerical test with a threshold
+  bracketed only between 2.9 and 3.2. §40 makes it plausible that `maxgap` is a
+  1-D proxy for `N_sec*n_tr` — a pilot's angular slice is `2*n_tr` wide, so holes
+  open exactly when `N_sec*n_tr` falls — but that is a conjecture, not a
+  derivation, and the value 3 is unexplained. §31.1's position stands: the test
+  is usable offline without a closed form.
+- **`range x K ~ 450 ns-pilots`** (§38.1). Unchanged, still empirical.
+- **The `K_alpha` efficiency factor 2.6x.** Measured, not derived.
+- **The mapping from `P(g>0.9)` to rate.** An ordering statistic (Spearman 0.907),
+  not a rate model.
+- **`d_alpha` at the 0.9-gain contour.** The `pi/2` criterion is a convention that
+  happens to land within 2.8% of it here; it is not derived that 0.9 is the right
+  contour for the 95%-of-reference rate criterion.
+
+### 40.9 Status of the theory after §40
+
+| tier | result |
+|---|---|
+| derived + independently verified (ours) | residual attenuation `2*pi*f_m*dtau -> 2*pi*(f_m-fc)*dtau`, factor `2*fH/B ~ 13x`; bit saving `log2(2*fH/B) = 3.70` predicted vs ~4 measured (§11) |
+| derived + verified (ours) | **the focus locus in closed form incl. the `2*fc/f_m` alias (§40.1); the pencil-of-lines geometry (§40.2); the coverage law `N_sec*n_tr >= H*d*Nt^2/4`, `C = 2.96`, 12/12 with no fitted parameter (§40.4-40.5); `B`-invariance of `K_min`, which retro-explains §15 (§40.4)** |
+| derived, inherited | `Delta <= 2/P` — their (43)-(44) sub-array 3-dB argument (§19-§20) |
+| argued, ours, qualitative | uniform comb optimality (§20.4) |
+| empirical, no closed form | `maxgap <~ 3` (§21); `range x K ~ 450` (§38.1); the `K_alpha` factor 2.6x (§40.6) |
+
+The chain `sharing -> focus shift -> coverage hole -> failure` now has a
+quantitative middle. What remains open is the `maxgap` threshold and the
+`range x K` law, both of which the paper can carry as measured design rules.
