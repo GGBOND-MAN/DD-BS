@@ -512,12 +512,12 @@
     <span class="m">2π(f<sub>m</sub>−f<sub>c</sub>)(τ<sub>g</sub>−τ<sub>n</sub>)</span>。
     代入<b>他们自己的</b> (46)：<span class="m">πξ<sub>m</sub> → π(ξ<sub>m</sub>−1)</span>，
     在 B/f<sub>c</sub>=1/6 处 <b>1.083 → 0.083，约 13 倍</b>，经 (52)–(54) 即扇区宽 13 倍、扇区偏移数 1/13。</p>
-    <div class="note"><b>下一步（在此之前不得主张任何东西）：</b>按原文实现他们的完整方案——
-    (29)–(31) LS 精化、(53)–(54) 扇区偏移、(62)–(64) 扇区参数、(71) 距离交织——
-    在他们的工作点（N<sub>t</sub>=256, L=2, N<sub>sec</sub>=4, K<sub>α</sub>=3, K<sub>total</sub>=12）复现其性能，
-    <b>然后</b>再加上 fc 补偿，在同 (N<sub>TTD</sub>, K<sub>total</sub>) 下对比。
-    若 K<sub>total</sub> 显著下降 → 一个窄但站得住的贡献；若不下降 → 本项目相对 OJ-COMS 2026 无可发表增量，
-    那也该<b>快点</b>知道而不是慢慢知道。</div>
+    <div class="note" style="border-left-color:var(--ok);background:var(--ok-bg)"><b>那一步已经走完，结论是「窄但站得住」。</b>
+    他们的完整方案已按原文实现（<span class="m">ojcoms_algorithm1.m</span>：(29)–(31)、(53)–(54)、(62)–(64)、(69)–(71)，
+    L=2 直接用 Table 3 原文），在其工作点复现了 Fig 8 全部五点。
+    在<b>同 (N<sub>TTD</sub>, K<sub>total</sub>)</b> 下加上 f<sub>c</sub> 补偿：L=8、32 TTD 处 12 导频 0.982 → 4.742（<b>4.8×</b>），
+    再改拆分后 <b>8 导频 6.403（98%）</b>——K<sub>total</sub> 从 12 降到 8 且速率提升。
+    <b>唯一的保留</b>：距离交织方式原文未规定，是我们的解释（§04 表明它靠 α 钳位工作），不能把由此产生的现象算到他们头上。</div>
   </div>
   <div class="card">
     <ul>
