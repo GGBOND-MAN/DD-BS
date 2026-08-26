@@ -121,7 +121,7 @@
     <div class="kpi"><div class="v">6.5×</div><div class="k">32 个 TTD 下的速率提升，导频还少 1/3</div></div>
     <div class="kpi"><div class="v">98%</div><div class="k">32 个 TTD、8 导频达到的天花板占比（SNR≥20 dB）</div></div>
     <div class="kpi"><div class="v">Δ ≤ 2/P</div><div class="k">导频梳齿距 ≤ 子阵波束宽：唯一的设计律</div></div>
-    <div class="kpi"><div class="v">C = 2.96</div><div class="k">覆盖律常数，闭式推出，12/12 零拟合</div></div>
+    <div class="kpi"><div class="v">C = 2.96</div><div class="k">覆盖律常数：闭式推出，端到端 28/28，零拟合</div></div>
   </div>
 </header>
 
@@ -269,13 +269,21 @@
         <tr><td>可见栅瓣阶次（预测 vs 实测）</td><td class="n">s=1：3.5 vs <b>3 条</b>（j=−2,−1,0）｜s=1/4：1.5 vs <b>1</b>｜s=1/8：1.2 vs <b>1</b></td></tr>
         <tr class="hi"><td><b>覆盖律</b></td><td class="n">N<sub>sec</sub>·n<sub>tr</sub> ≥ H/(2δα) = H·d·N<sub>t</sub>²/4 = <b>7.99</b><br>
           δα = 2/(d·N<sub>t</sub>²)（π/2 边缘相位），数值 |g|=0.9 等值线差 <b>2.8%</b></td></tr>
-        <tr class="hi"><td><b>扫描率形式</b></td><td class="n">N<sub>sec</sub>·s ≥ C，&nbsp; C = H·d·N<sub>t</sub>³·ξ<sub>H</sub>²/(3.52γM) = <b>2.96</b><br>实测括号 (2, 4]，推出的值落在里面</td></tr>
+        <tr class="hi"><td><b>扫描率形式（论文用这个）</b></td><td class="n">N<sub>sec</sub>·s ≥ C，&nbsp; C = H·d·N<sub>t</sub>³·ξ<sub>H</sub>²/(3.52γM) = <b>2.96</b><br><b>端到端 28/28</b>，实测括号 (2, 3]，推出的值落在里面</td></tr>
         <tr><td><b>B 消掉了</b></td><td class="n">反过来推出了 §07 那条被证伪的 K/P ∝ B/f<sub>c</sub>：Λ ∝ B 抵消了 S 里的 1/B</td></tr>
       </tbody>
     </table></div>
-    <p class="cap" style="margin-top:11px"><b>12/12 零拟合参数。</b>按 N<sub>sec</sub>·n<sub>tr</sub> 排序，推出的阈值 8.21
-    正好落在最后一个失败点（6.51，P=0.670）与第一个通过点（8.68，P=0.906）之间。
-    前向预测："s=1/8 时纯靠扇区需要 N<sub>sec</sub>≈42"，实测 32→0.908（不过）、42→0.959（过）。</p>
+    <p class="cap" style="margin-top:11px"><b>端到端 28/28，零拟合参数</b>（<span class="m">kmin_theory.m</span>，真实信道，L=8，4 个扫描率 × 7 个扇区数）。
+    <span class="m">N<sub>sec</sub>·s ≤ 2</span> 的 4 格全部不过（80.3 / 87.4 / 92.1 / <b>93.7%</b>）；
+    <span class="m">N<sub>sec</sub>·s ≥ 3</span> 的 24 格全部通过（<b>95.5%</b> … 100.5%）。<b>无重叠。</b>
+    C = 2.96 是在看到任何端到端速率之前推出来的。</p>
+    <div class="red"><b>余量必须一起报，三条。</b>
+    ① 括号 (2,3] 两端差 <b>1.5 倍</b>，网格只把 C 定到这个精度；2.96 距最低通过格仅 <b>1.4%</b>，
+    换成数值精确的 δα（C=3.04）就误判那两格（26/28）——<b>不能声称 π/2 判据精确</b>。
+    ② 这是<b>通过/不通过的判据，不是速率模型</b>：等 N<sub>sec</sub>·s 处速率仍差 3 点（s=1/4 读 99.9%，s=1 读 97.2%），别在这些点上拟合曲线。
+    ③ <b>格点量化形式（N<sub>sec</sub>·n<sub>tr</sub>）反而更差</b>：25/28，阈值保守 1.7 倍。
+    n<sub>tr</sub>/s = 2.55 / 2.42 / 2.17 / <b>1.58</b>，s=1/8 处 38% 的量化亏空正是误判发生的地方。
+    <b>论文用光滑的 N<sub>sec</sub>·s 形式。</b></div>
     <div class="red"><b>一处归因错误已更正。</b>覆盖约束绑在 <b>N<sub>sec</sub></b> 上而不是 K。
     早先版本把它记成 <span class="m">K·s ≥ 4</span>（C 是拟合的），因为 <span class="m">hw_budget.m</span> 固定
     <span class="m">N<sub>sec</sub>=8</span> 扫 <span class="m">K<sub>α</sub></span>，两者是同一根轴——
@@ -287,7 +295,11 @@
     于是它变成一次 <b>α<sub>min</sub> 上的平角度扫描</b>——直线束产生不了的覆盖基元。
     <br>而它<b>完全依赖重标定</b>：s=1/8、K<sub>α</sub>=2 时，有重标定 <span class="m">0.935</span>，用标称查表只有 <span class="m">0.456</span>。
     §01 说重标定"必需"过去只有 85%-焦点位移这个观测，<b>现在有机制了</b>。
-    <br>设计数字：补 α 缺口，靠扇区要 K≈42，靠插值要 K=16——<b>插值便宜 2.6×</b>。</div>
+    <br><b>但效率排序被端到端推翻了。</b>那个"扇区要 K≈42"来自离线代理量，真实答案是 <b>24</b>。改用实测：
+    <br>&nbsp;&nbsp;s=1/4：扇区 <b>K=12</b>（95.5%）vs 插值 K=16（98.0%）
+    <br>&nbsp;&nbsp;s=1/8：扇区 <b>K=24</b>（97.5%）vs 插值 K=32（97.6%）
+    <br><b>扇区反而便宜约 1.3×。</b>机制结论不变（K<sub>α</sub> 确实是另一种基元），被推翻的是建在它上面的效率排序——
+    而这<b>加强</b>了贡献 B：「导频投到角度维而非距离维」以前只在 s=1 处成立，现在四个扫描率全成立。</div>
   </div>
 </section>
 
@@ -542,7 +554,7 @@
     &nbsp;&nbsp;<b>redesign_for_shared.m</b> 参数重设计 · <b>limited_ttd_algo.m</b> 四种解码臂<br>
     &nbsp;&nbsp;<b>ojcoms_algorithm1.m</b> 他们的 Algorithm 1（L=2 用 Table 3 原文） · <b>serve_beam.m</b> 服务波束同硬件 · <b>add_awgn.m</b><br>
     &nbsp;&nbsp;<b>ablation_ps.m</b> / <b>sector_alloc.m</b> / <b>rate_vs_snr.m</b> / <b>oracle_loc.m</b> / <b>hw_budget.m</b> / <b>pareto_LsK.m</b>（N=200 带 CI）<br>
-    &nbsp;&nbsp;<b>kmin_theory.m</b> ★ §40 覆盖律的端到端确认（待跑） · <b>THEORY.md</b> 40 节完整记录<br>
+    &nbsp;&nbsp;<b>kmin_theory.m</b> ★ 覆盖律端到端确认（<b>已跑，28/28</b>） · <b>THEORY.md</b> 41 节完整记录<br>
     <b>experiments/theory/</b> — §40 推导代码（Python，<b>不依赖 baseline，任何机器可复现</b>）<br>
     &nbsp;&nbsp;<b>ddbs.py</b> ddbs_beam_arch + actual_focus 的 NumPy 移植<br>
     &nbsp;&nbsp;<b>verify_closed_form.py</b> 闭式吻合 1.3e-4 · <b>alias_orders.py</b> 可见栅瓣阶次 · <b>collapse.py</b> 12/12<br>
@@ -556,9 +568,10 @@
   <div class="sh"><span class="n">10</span><h2>剩余工作</h2><span class="r"></span></div>
   <div class="card">
     <ul>
-      <li><span class="chip bad">下一步</span> <b>跑 <span class="m">kmin_theory.m</span></b>——§04 覆盖律的端到端确认。
-      PART 1 扫 N<sub>sec</sub>（K<sub>α</sub>=1）逐格打印实测速率与推导给出的 PASS/fail 判定；
-      <b>≥95% 边界必须与那一列重合，否则这条律被证伪</b>。PART 2 对照 K<sub>α</sub>。</li>
+      <li><span class="chip ok">已通过</span> <s>跑 kmin_theory.m</s>——<b>覆盖律 28/28 通过，零拟合参数</b>（§04）。
+      同时推翻了 §04 里两条我自己的附带说法：格点量化形式更差，扇区比距离插值便宜而不是更贵。</li>
+      <li><span class="chip bad">下一步</span> <b>画图 8 / 图 9</b>：图 8 直线束几何示意，图 9 实测速率 vs N<sub>sec</sub>·s + 阈值线 C=2.96。
+      <b>图 9 必须用 kmin_theory.m 的实测速率</b>，不能用 <span class="m">theory/</span> 的离线代理量——后者在小 s 处系统性悲观。</li>
       <li><b>补两个网格空格</b>：L=4@K=32、L=2@N<sub>sec</sub>≥3。覆盖律现在能预测它们，但<b>预测不能填表</b>。</li>
       <li><b>低 SNR 段</b>：要么按局限如实写，要么与他们的 MF 精化正面比——但那是他们的地盘，进去要有把握。</li>
       <li><b>图 8（直线束几何示意）</b> 与 <b>图 9（覆盖律 12/12）</b> 待画；数据都已在 <span class="m">experiments/theory/</span>。</li>
@@ -574,7 +587,7 @@
 <footer>
   <span>DD-BS · claude/paper-baseline-direction-2cklzr</span>
   <span>Nt=256 · fc=30 GHz · B=5 GHz · M=1024 · SNR=20 dB · N<sub>iter</sub>=200</span>
-  <span>MATLAB 实测 + §40 离线推导 · THEORY.md §1–§40</span>
+  <span>MATLAB 实测 + §40–§41 推导与端到端确认 · THEORY.md §1–§41</span>
 </footer>
 
 </div>

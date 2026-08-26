@@ -119,7 +119,7 @@
   <div class="kpis">
     <div class="kpi"><div class="v">6.5×</div><div class="k">32 TTD 下的速率提升，导频少 1/3</div></div>
     <div class="kpi"><div class="v">2</div><div class="k">可分离的实测贡献：补偿 + 分配（另加一条推导律）</div></div>
-    <div class="kpi"><div class="v">12/12</div><div class="k">覆盖律零拟合参数命中</div></div>
+    <div class="kpi"><div class="v">28/28</div><div class="k">覆盖律端到端命中，零拟合参数</div></div>
     <div class="kpi"><div class="v">7</div><div class="k">必须自己先写的局限</div></div>
   </div>
 </header>
@@ -154,7 +154,7 @@
     <tbody>
       <tr><td class="n">I</td><td>Introduction</td><td>—</td><td>近场宽带训练 → DDBS 用 3 导频但每天线一个 TTD → AoSA 降 TTD 数但报出 L≤2 天花板 → <b>我们指出成因</b></td></tr>
       <tr><td class="n">II</td><td>System &amp; 架构</td><td><b>图 1</b> 架构对比</td><td>他们的 (14) vs 补偿后；残差 <span class="m">2πf<sub>m</sub>Δτ → 2π(f<sub>m</sub>−f<sub>c</sub>)Δτ</span>，B/f<sub>c</sub>=1/6 处 ~13×</td></tr>
-      <tr class="hi"><td class="n">III</td><td><b>机理与设计律</b></td><td><b>图 8</b> 直线束几何<br><b>图 3</b> 主曲线<br><b>图 9</b> 覆盖律 12/12</td><td>焦点轨迹闭式（含<b>频变混叠 2f<sub>c</sub>/f<sub>m</sub></b>）→ 过枢轴的<b>直线束</b> → 覆盖律 <span class="m">N<sub>sec</sub>·n<sub>tr</sub> ≥ H·d·N<sub>t</sub>²/4</span>；<span class="m">Δ ≤ 2/P</span> 继承自他们 (43)-(44)</td></tr>
+      <tr class="hi"><td class="n">III</td><td><b>机理与设计律</b></td><td><b>图 8</b> 直线束几何<br><b>图 3</b> 主曲线<br><b>图 9</b> 覆盖律 28/28</td><td>焦点轨迹闭式（含<b>频变混叠 2f<sub>c</sub>/f<sub>m</sub></b>）→ 过枢轴的<b>直线束</b> → 覆盖律 <span class="m">N<sub>sec</sub>·s ≥ C = 2.96</span>；<span class="m">Δ ≤ 2/P</span> 继承自他们 (43)-(44)</td></tr>
       <tr class="hi"><td class="n">IV</td><td><b>提出的方案</b></td><td><b>图 2</b> 单变量消融<br><b>图 4</b> 导频分配</td><td>A 与 B 分开呈现；L=1 零对照 1.00±0.00 是可信度的锚</td></tr>
       <tr><td class="n">V</td><td>数值结果</td><td><b>图 5</b> 速率–SNR<br><b>图 7</b> 硬件预算</td><td>四线分账：MRT−oracle = 分组代价，oracle−ours = 训练代价</td></tr>
       <tr><td class="n">VI</td><td>Conclusion + 局限</td><td>—</td><td>七条局限（§06）不要塞进脚注，单开一小节</td></tr>
@@ -177,7 +177,7 @@
       <tr><td class="n">6</td><td>离线判据 44/44</td><td class="m">diag_shared_mechanism.m 等</td><td class="n">✅</td></tr>
       <tr><td class="n">7</td><td>三维硬件预算 + range×K 律</td><td class="m">hw_budget.m / pareto_LsK.m</td><td class="n">✅</td></tr>
       <tr class="hi"><td class="n">8</td><td><b>焦点轨迹几何</b>：过枢轴的直线束，每个栅瓣阶次一条；s 改变枢轴距离</td><td class="m">theory/alias_orders.py（示意图待画）</td><td class="n">数据✅ 图待画</td></tr>
-      <tr class="hi"><td class="n">9</td><td><b>覆盖律验证</b>：P(g&gt;0.9) vs N<sub>sec</sub>·n<sub>tr</sub>，阈值线 H·d·N<sub>t</sub>²/4</td><td class="m">theory/collapse.py + <b>kmin_theory.m</b></td><td class="n">离线✅ 端到端待跑</td></tr>
+      <tr class="hi"><td class="n">9</td><td><b>覆盖律验证</b>：实测速率 vs <span class="m">N<sub>sec</sub>·s</span>，阈值线 C=2.96；28 格干净分离</td><td class="m"><b>kmin_theory.m</b>（勿用 theory/collapse.py 出图，见 §06-7）</td><td class="n">✅ 端到端 28/28</td></tr>
     </tbody>
   </table></div>
 </section>
@@ -196,7 +196,7 @@
           预测比特节省 <span class="m">log₂(2f<sub>H</sub>/B) = 3.70</span>，实测 ~4<br>
           <b>焦点轨迹闭式</b>（含频变混叠模数 <span class="m">2f<sub>c</sub>/f<sub>m</sub></span>）→ 复现 <span class="m">actual_focus</span> 到 <span class="m">1.3e-4</span><br>
           <b>近场聚焦深度</b> <span class="m">δα = 2/(d·N<sub>t</sub>²)</span>（孔径边缘二次相位 = π/2），与数值 |g|=0.9 等值线差 2.8%<br>
-          <b>覆盖律</b> <span class="m">N<sub>sec</sub>·n<sub>tr</sub> ≥ H/(2δα) = H·d·N<sub>t</sub>²/4</span>，即 <span class="m">N<sub>sec</sub>·s ≥ C = 2.96</span>，<b>12/12 零拟合</b><br>
+          <b>覆盖律</b> <span class="m">N<sub>sec</sub>·s ≥ C = H·d·N<sub>t</sub>³·ξ<sub>H</sub>²/(3.52γM) = 2.96</span>，<b>端到端 28/28、零拟合参数</b>（实测括号 (2,3]）<br>
           <b>K<sub>min</sub> 与 B 无关</b>——B 在推导中消掉，反过来解释了 §15 那次证伪
         </td><td class="m">THEORY §11<br>THEORY §40</td></tr>
         <tr><td><b>推导，但是<br>继承的</b></td><td><span class="m">Δ ≤ 2/P</span> 立在子阵 Dirichlet 主瓣 3-dB 论证上，是他们的 (43)-(44) 加 <span class="m">u<sub>3dB</sub>≈1.39</span>。
@@ -206,7 +206,8 @@
         <tr><td><b>纯经验，<br>没有闭式</b></td><td>
           <span class="m">maxgap ≲ 3</span> 波束宽（44/44，阈值只夹在 2.9/3.2 之间）<br>
           <span class="m">range × K ≈ 450</span> ns·导频（15% 以内）<br>
-          <span class="m">K<sub>α</sub></span> 比扇区便宜 <span class="m">2.6×</span>（实测，非推导）
+          <b>扇区</b>比 <span class="m">K<sub>α</sub></span> 便宜约 <span class="m">1.3×</span>（s=1/4：K=12 vs 16；s=1/8：K=24 vs 32）——实测，非推导<br>
+          等 <span class="m">N<sub>sec</sub>·s</span> 处仍有 ±3 点的残余离散（§41.5）：这条律是<b>通过/不通过的判据，不是速率模型</b>
         </td><td class="m">THEORY §21 §38 §40.6</td></tr>
       </tbody>
     </table></div>
@@ -216,10 +217,12 @@
     <b>扫描强度 S 就是枢轴到扇区目标的距离</b>。每根导频的<b>距离覆盖恒为 H</b>（他们 (69) 的构造），
     <b>s 买的是角度遍历次数</b> <span class="m">n<sub>tr</sub> ∝ s</span>。</div>
     <div class="note" style="border-left-color:var(--ok);background:var(--ok-bg)"><b>最该写进论文的一段：这条律做过前向预测，然后被验证。</b>
-    推完之后先算出"s=1/8 时纯靠扇区需要 N<sub>sec</sub> ≈ 41.5"，<b>再</b>去扫：
-    <span class="m">N<sub>sec</sub></span> = 24 → 0.815（不过）、32 → 0.908（不过）、<b>42 → 0.959（过）</b>、48 → 0.972。
-    <br>而 12 格的分离表里，推出的阈值 8.21 正好落在最后一个失败点（6.51）与第一个通过点（8.68）之间。
-    <b>"先预测后验证"这个顺序本身就是论据</b>，写作时要把顺序讲清楚，不要写成事后拟合。</div>
+    <span class="m">C = 2.96</span> 是<b>在看到任何端到端速率之前</b>推出来的，然后 28 格实测把它验了下来：
+    <br>&nbsp;&nbsp;<span class="m">N<sub>sec</sub>·s ≤ 2</span> 的 4 格全部不过（80.3 / 87.4 / 92.1 / <b>93.7%</b>）
+    <br>&nbsp;&nbsp;<span class="m">N<sub>sec</sub>·s ≥ 3</span> 的 24 格全部通过（<b>95.5%</b> … 100.5%），<b>无重叠</b>
+    <br><b>"先预测后验证"这个顺序本身就是论据</b>，写作时把顺序讲清楚，不要写成事后拟合。
+    <br><b>但要连余量一起报</b>：括号两端差 1.5 倍，所以网格只把 C 定到这个精度；2.96 距最低通过格只有 <b>1.4%</b>，
+    换用数值精确的 δα（C=3.04）就会误判那两格（26/28）。<b>不能因此声称 π/2 判据是精确的。</b></div>
     <div class="red"><b>§39 的一处归因错误已更正，写作时不要沿用旧版。</b>
     覆盖约束绑在 <b>N<sub>sec</sub></b> 上而不是 K——<span class="m">hw_budget.m</span> 固定 <span class="m">N<sub>sec</sub>=8</span> 扫 <span class="m">K<sub>α</sub></span>，
     两者是同一根轴。<b>这正是 §18 那个教训的重演</b>（绝不在候选变量被绑定的轨迹上拟合不变量），而规矩是我们自己写的。
@@ -261,7 +264,7 @@
         §40.6 现在知道它<b>怎么</b>起作用：偏移把 87% 的扫描推到可实现 α 之外，重标定把 <b>40%</b> 的子载波钉在 α<sub>min</sub>，
         于是它成为一次平角度扫描——<b>所以这个机制属于我们的插值构造，不是他们方案的性质</b>，这一点必须写清楚</td></tr>
         <tr><td class="n">6</td><td><b>网格边界与复现差距</b></td><td>L=4@K=32、L=2@N<sub>sec</sub>≥3 未测；他们 Fig 7 未精确复现（Fig 8 五点跟住）。如实写明网格到此为止。<b>§40 的覆盖律现在能预测这些空格</b>，但预测不等于实测——不要用预测填表</td></tr>
-        <tr><td class="n">7</td><td><b>覆盖律的 12/12 是离线统计量，不是端到端速率</b></td><td>那 12 格用的是 <span class="m">P(g&gt;0.9)</span>（重标定焦点表与用户的最佳窄带聚焦增益），对 12 个实测速率的 Spearman = <b>0.907</b>，边缘那一对是反的（0.925→98% vs 0.936→92%）。<b>如实写成"排序统计量"，并在正文给出 <span class="m">kmin_theory.m</span> 的端到端确认</b>；那一跑没做完之前，覆盖律的措辞要留余地</td></tr>
+        <tr><td class="n">7</td><td><b>覆盖律的常数只定到 1.5 倍精度</b>（端到端已确认，但余量要报）</td><td>28/28 是真的，但实测括号是 (2,3]，两端差 1.5 倍；2.96 距最低通过格 1.4%，改用数值 δα 就变 26/28。<b>写成"落在括号内"而非"精确"。</b>另外它<b>不是速率模型</b>：等 <span class="m">N<sub>sec</sub>·s</span> 处速率仍差 3 点（s=1/4 读 99.9%、s=1 读 97.2%），<b>不要在这些点上拟合曲线</b>。<br><b>离线代理量 <span class="m">P(g&gt;0.9)</span> 在小 s 处系统性悲观</b>（把 97.5% 和 98.3% 的格判成不过），只能用于机理诊断，<b>论文里任何导频数字都必须来自 MATLAB</b></td></tr>
       </tbody>
     </table></div>
     <div class="note"><b>这七条单开一小节，不要塞脚注。</b>主动写全的局限章节会显著提高可信度——
@@ -285,11 +288,11 @@
         <tr><td>速率–SNR：ours vs theirs（≥20 dB）</td><td class="n">97–98% vs ≤18%</td><td class="m">rate_vs_snr</td></tr>
         <tr><td>oracle 距 MRT</td><td class="n">0.3–0.7%（全 SNR 段）</td><td class="m">rate_vs_snr</td></tr>
         <tr><td>设计律（梳齿距）</td><td class="n">Δ ≤ 2/P，三配置一致到 3%</td><td class="m">kmin_fine / pilot_spacing_map</td></tr>
-        <tr class="hi"><td><b>覆盖律（推导）</b></td><td class="n">N<sub>sec</sub>·n<sub>tr</sub> ≥ H·d·N<sub>t</sub>²/4 = 7.99<br>N<sub>sec</sub>·s ≥ C，C = H·d·N<sub>t</sub>³·ξ<sub>H</sub>²/(3.52γM) = <b>2.96</b><br>12/12 分离，实测括号 (2, 4]</td><td class="m">theory/collapse</td></tr>
+        <tr class="hi"><td><b>覆盖律（推导 + 端到端）</b></td><td class="n">N<sub>sec</sub>·s ≥ C，C = H·d·N<sub>t</sub>³·ξ<sub>H</sub>²/(3.52γM) = <b>2.96</b><br><b>28/28</b>，零拟合参数，实测括号 (2, 3]<br>不过的 4 格：80.3/87.4/92.1/93.7%；通过的 24 格：95.5–100.5%</td><td class="m">kmin_theory</td></tr>
         <tr><td>聚焦深度</td><td class="n">δα = 2/(d·N<sub>t</sub>²) = 6.10e-3（π/2 边缘相位）<br>数值 |g|=0.9 等值线 5.94e-3，差 <b>2.8%</b></td><td class="m">theory/ddbs</td></tr>
         <tr><td>焦点闭式吻合</td><td class="n">1.3e-4（栅格 4.9e-4），L=1 全带</td><td class="m">theory/verify_closed_form</td></tr>
         <tr><td>可见栅瓣阶次</td><td class="n">s=1 → 3 条（j=−2,−1,0）；s=1/4、1/8 → 各 1 条</td><td class="m">theory/alias_orders</td></tr>
-        <tr><td>K<sub>α</sub> 机制</td><td class="n">插值导频 <b>40%</b> 子载波被钉在 α<sub>min</sub>，横跨其 0.395 角度片中的 0.262<br>补 α 缺口：扇区 K≈42 vs 插值 K=16（<b>2.6×</b>）</td><td class="m">theory/diag_clamp</td></tr>
+        <tr><td>K<sub>α</sub> 机制</td><td class="n">插值导频 <b>40%</b> 子载波被钉在 α<sub>min</sub>，横跨其 0.395 角度片中的 0.262<br>补 α 缺口的实测代价：<b>扇区更便宜约 1.3×</b>（s=1/4 K=12 vs 16，s=1/8 K=24 vs 32）</td><td class="m">theory/diag_clamp<br>kmin_theory</td></tr>
         <tr class="hi"><td><b>重标定的必要性</b></td><td class="n">s=1/8、K<sub>α</sub>=2：重标定 <b>0.935</b> vs 标称 <b>0.456</b></td><td class="m">theory/diag_recal</td></tr>
         <tr><td>硬件律（经验）</td><td class="n">量程 × K ≈ 450 ns·导频（首次减半免费）</td><td class="m">hw_budget</td></tr>
         <tr><td>离线判据（经验）</td><td class="n">maxgap ≤ ~3 波束宽，44/44 零误判</td><td class="m">cov_gap 全脚本</td></tr>
@@ -322,8 +325,8 @@
 
 <footer>
   <span>DD-BS · claude/paper-baseline-direction-2cklzr</span>
-  <span>实验阶段完成 · MATLAB 实测 + §40 离线推导（端到端确认待跑 kmin_theory.m）</span>
-  <span>证据档案见 PROJECT_SUMMARY · 完整推导见 THEORY.md §1–§40 · 推导代码 experiments/theory/</span>
+  <span>实验阶段完成 · 覆盖律端到端已确认（kmin_theory.m，28/28）</span>
+  <span>证据档案见 PROJECT_SUMMARY · 完整推导见 THEORY.md §1–§41 · 推导代码 experiments/theory/</span>
 </footer>
 
 </div>
