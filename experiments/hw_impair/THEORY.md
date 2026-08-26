@@ -2737,3 +2737,111 @@ The coverage law has now cleared the gate it was written to face. What remains
 open is unchanged from §40.8 apart from the two corrections above: the `maxgap`
 threshold, `range x K`, and the low-SNR collapse have no closed form, and the
 `L` threshold for when `fc` compensation starts to matter has never been derived.
+
+---
+
+## 42. Feasibility of the remaining derivations — one closes, one does not
+
+Three items were left open at §41.6. Two are settled here.
+
+### 42.1 `range x K` — CLOSES, as a corollary of the coverage law
+
+§38.1's `range x K ~ 450 ns-pilots` was filed as empirical. It follows from §41:
+
+    range ∝ |theta_t| = |theta_M - (fc/fH)*S| / rho_theta ≈ kappa(s)*s
+    coverage law:  N_sec * s >= C
+    =>             range x N_sec  >=  kappa * C
+
+`kappa = range/s` drifts 25% across the sweep (132.6 -> 103.2, because the
+`theta_M` offset in (63) makes `range` not exactly proportional to `s`), so the
+corollary predicts a **band, not a constant**: `[305, 392] ns-pilots`.
+
+Against the `K_alpha = 1` frontier from `kmin_theory.m`:
+
+| `s` | range | `N_sec` min | `range x N_sec` | binding constraint |
+|---|---|---|---|---|
+| 1 | 132.6 ns | 8 | 1061 | `N_sec >= L = 8` |
+| 1/2 | 64.2 ns | 8 | 514 | `N_sec >= L = 8` |
+| **1/4** | **30.0 ns** | **12** | **360** | **coverage** |
+| **1/8** | **12.9 ns** | **24** | **310** | **coverage** |
+
+**Both coverage-limited rows land inside the predicted band.** The two large-`s`
+rows read 1061 and 514 because `N_sec` there is floored by the sharing constraint,
+not by coverage — they are not on the coverage frontier at all, and the old "450"
+averaged across that boundary.
+
+**Restate the law as `range x N_sec >= kappa*C`, valid where coverage binds**, and
+note that the `K_alpha`-based frontier mixes in the second primitive (§41.3) so it
+must not be quoted as the same law.
+
+### 42.2 The `L` threshold — NOT reachable from §40's geometry. Tested, not assumed.
+
+`theory/lthresh.py` puts both ablation arms through the §40 focus geometry at the
+exact `ablation_ps.m` operating point (`K = 12`, `N_sec = min(4,L)`), and compares
+the predicted compensation gain against the measured one:
+
+| `L` | geometry predicts | measured (N=200) |
+|---|---|---|
+| 1 | 1.00 | **1.00 ± 0.00** |
+| **2** | **1.43** | **0.98 ± 0.08** |
+| 4 | 2.49 | 2.81 ± 0.50 |
+| 8 | 2.61 | 4.70 ± 1.17 |
+| 16 | 1.22 | 2.58 ± 0.53 |
+
+`L` = 4, 8, 16 are right in direction and short in magnitude — consistent with
+§41.4's finding that the offline statistic is pessimistic. **`L = 2` has the wrong
+sign of error**: the geometry says compensation should buy 43%, the measurement
+says it buys nothing.
+
+**The obvious confound was checked and refuted.** `ablation_ps.m` gives `L = 2` the
+split `(N_sec, K_alpha) = (2, 6)` while `L` = 4/8/16 all get `(4, 3)`, so `L` is
+confounded with the split along that sweep — the §18/§39 pattern. Holding `K = 12`
+and varying the split at `L = 2`:
+
+    (2,6) -> 1.43    (4,3) -> 1.45    (3,4) -> 1.44    (6,2) -> 1.44
+
+Flat. **The `L = 2` anomaly is not the split.** (The same test at `L = 8` shows
+`(8,1) -> 8.23` vs `(4,3) -> 2.61`, which is contribution B reappearing in the
+geometry — that part is consistent.)
+
+So the effect is real and lives **outside** the focus-table geometry. What the
+statistic does not model: the wideband behaviour of the serving beam (it scores a
+narrowband gain at `fc`), the training-stage selection under noise, and the
+per-subcarrier rate integration. At `L = 2` the measured *uncompensated* arm
+(5.481) beats what the geometry predicts (4.520), so the missing physics favours
+the uncompensated arm specifically at small `L`.
+
+**Verdict: not an extension of §40 — a new mechanism would be required.** Four
+mechanism attempts have already been refuted (§15, §16, §16.2, §17.2); the prior
+on a fifth succeeding is poor and the cost is high. **Recommendation: do not
+attempt it.** Keep the `L >= 4` restriction as a measured limitation, which is
+also the form that agrees with OJ-COMS's own published conclusion.
+
+### 42.3 The low-SNR threshold — assessed as derivable, NOT yet done
+
+The decision is `argmax` over `M = 1024` noisy subcarrier samples, so the collapse
+is a **selection problem**, and selection among `M` competitors has a standard
+extreme-value form: the SNR at which the true peak reliably wins scales as
+`ln(M)`. `ln(1024) = 6.93`, i.e. **8.4 dB** — against a measured knee "below about
+10 dB" (9% at 0 dB, 23% at 5 dB, 97-98% at >=20 dB).
+
+That agreement is encouraging but it is an estimate, not a derivation: the
+simulation's SNR axis is pre-beamforming and includes path loss and array gain, so
+mapping `8.4 dB` onto the plotted axis needs care, and the `ln M` scaling gives
+only a **0.45 dB** shift for a 2x change in `M` — too small to test by halving `M`.
+A usable test sweeps `M` over 256-4096 (predicted 1.76 dB shift) or checks the
+predicted **shape** `P(correct) = F(x)^{M-1}`, which is parameter-free.
+
+**This is the one remaining item with a good ratio of value to risk**: it converts
+limitation #1 from "we also collapse" into "we collapse here, and the threshold is
+`ln M`". Not started.
+
+### 42.4 Updated status
+
+| item | verdict |
+|---|---|
+| `range x K` | **DERIVED** (§42.1), corollary of the coverage law, band `[305, 392]` |
+| `maxgap <~ 3` | not attempted, and should not be — numerical test, §31.1 stands |
+| `L` threshold | **tested and abandoned** (§42.2) — outside §40's geometry |
+| sector vs `K_alpha` cost ratio ~1.3x | empirical (§41.3), no attempt planned |
+| low-SNR threshold `∝ ln M` | **derivable, not done** (§42.3) — the one item worth starting |
