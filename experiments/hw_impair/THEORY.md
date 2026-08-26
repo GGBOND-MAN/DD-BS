@@ -2622,3 +2622,118 @@ coverage constraint contains `N_sec` and `n_tr`, neither of which contains `L`.
 The chain `sharing -> focus shift -> coverage hole -> failure` now has a
 quantitative middle. What remains open is the `maxgap` threshold and the
 `range x K` law, both of which the paper can carry as measured design rules.
+
+---
+
+## 41. END-TO-END CONFIRMED — the law survives, and two of §40's side-claims do not
+
+`kmin_theory.m`, 28 cells, `L = 8` (32 TTDs both stages), `K_alpha = 1`,
+`N_iter = 100`, reference 6.546. This is the run §40.8 said the law had to pass:
+**real channel, real rates, not the offline coverage statistic.**
+
+### 41.1 The result
+
+    N_sec * s >= C = 2.959      28/28 correct classification at the >=95% criterion
+
+Sorted by `N_sec*s`, the pass/fail boundary is **clean with no overlap**:
+
+| `N_sec*s` | cells | rate range |
+|---|---|---|
+| 1.00 - 2.00 | 4 (all fail) | 80.3%, 87.4%, 92.1%, **93.7%** |
+| 3.00 - 48.0 | 24 (all pass) | **95.5%**, 97.5%, ... 100.5% |
+
+**Measured bracket: `C` in (2, 3]. Derived `C = 2.959` lands inside it.** Nothing
+was fitted — every quantity comes from the system parameters or OJ-COMS's own
+(63)/(69).
+
+**The margin, stated honestly.** The bracket edges differ by a factor 1.5, so the
+grid resolves `C` only to that factor, and 2.959 sits **1.4% below the lowest
+passing cell**. Re-deriving with the numerically exact `d_alpha` (5.939e-3 instead
+of the `pi/2` value 6.104e-3) gives `C = 3.041`, which misclassifies the two cells
+sitting exactly at `N_sec*s = 3` — 26/28. **So "28/28" depends on two cells with a
+1.4% margin.** The defensible claim is: *`C` is confirmed to the factor-1.5
+resolution of the grid, and the closed form lands inside the bracket.* Do not
+claim the `pi/2` convention is thereby shown exact.
+
+### 41.2 REFUTED — §40.3's "use the lattice-exact `n_tr`" is backwards
+
+§40.3 recommended the lattice-quantized form `N_sec*n_tr >= H*d*Nt^2/4` and called
+`∝ s` "the approximation". The end-to-end data says the opposite:
+
+| statistic | threshold | correct |
+|---|---|---|
+| **`N_sec * s`** | **2.959 (derived)** | **28/28** |
+| `N_sec * n_tr` | 7.987 (derived) | 25/28 |
+
+Both separate cleanly (`n_tr` bracket is (4.34, 4.75)), so the *ordering* is fine
+either way — but the lattice form's derived threshold is **1.7x too conservative**
+and misses three cells, all in the safe direction (predicted fail, measured
+95.5%, 97.5%, 98.3%).
+
+Why: the lattice correction bites hardest exactly where the misses are.
+`n_tr/s` = 2.547, 2.421, 2.169, **1.582** for `s` = 1, 1/2, 1/4, 1/8 — a 38%
+deficit at the smallest sweep rate. The smooth `(fc/fH)*S*Lambda/2` estimate does
+not take that penalty and tracks the rate better. **I do not have a derivation for
+why the smooth estimate is the right one; the experiment selects it.** A plausible
+account — the >=95% rate criterion is soft (the rate is a log), so a coverage
+deficit degrades the rate gradually while the lattice form treats it as a cliff —
+is a description, not a mechanism, and is recorded as such.
+
+**Consequence for the paper: quote the law in the `N_sec*s >= C` form.**
+
+### 41.3 REFUTED — §40.6's "distance interleaving is 2.6x cheaper than sectors"
+
+That number came from the offline statistic, which predicted sectors alone would
+need `N_sec ~ 42` at `s = 1/8`. End-to-end they need **24**. With the offline
+pessimism removed, the ranking reverses:
+
+| `s` | cheapest via **sectors** | cheapest via `K_alpha` |
+|---|---|---|
+| 1/4 | **K = 12** (95.5%) | K = 16 (98.0%) |
+| 1/8 | **K = 24** (97.5%) | K = 32 (97.6%) |
+
+**Sector shifting is the cheaper way to buy coverage, by ~1.3x** — not the more
+expensive one. §40.6's *mechanism* finding stands unchanged (`K_alpha` reaches
+>=95% while `N_sec*s` stays at 1-2, far below threshold, so it is genuinely a
+different primitive working through the `alpha_min` clamping); what is refuted is
+the efficiency ranking built on top of it.
+
+**This strengthens contribution B rather than weakening it.** "Spend pilots on
+sectors, not on distance interleaving" was previously demonstrated only at `s = 1`
+(§27). It now holds at **every sweep rate measured**, and the cost ratio is
+quantified. Fix the 2.6x wherever it appears.
+
+### 41.4 What the offline statistic is good for, and what it is not
+
+`P(g>0.9)` (§40.5) is systematically **pessimistic at small `s`**: it called
+(1/8, 24) and (1/8, 32) failures at 0.815 / 0.908 where the real rates are 97.5% /
+98.3%. Its Spearman against measured rates was already only 0.907. So:
+
+- **Use it for**: exploring the (s, N_sec, K_alpha) space cheaply offline, and for
+  the mechanism diagnostics of §40.6, which it settles correctly.
+- **Do not use it for**: any quantitative pilot-count claim. Every such number in
+  the paper must come from `kmin_theory.m` / `hw_budget.m`, not from the port.
+
+### 41.5 Residual spread the law does not explain
+
+At equal `N_sec*s` the rate still moves by up to 3 points, systematically with `s`:
+at `N_sec*s = 8`, `s = 1/4` reads 99.9% while `s = 1` reads 97.2%. So the statistic
+is a **pass/fail separator, not a rate model** — the same caveat §40.5 attached to
+the offline proxy now attaches to the law itself. State it; do not draw a fitted
+curve through these points.
+
+### 41.6 Theory status after §41
+
+| tier | result |
+|---|---|
+| derived + confirmed end-to-end | **coverage law `N_sec*s >= C`, `C = H*d*Nt^3*xi_H^2/(3.52*gamma*M) = 2.959`, 28/28 on the real channel, zero fitted parameters (§41.1)**; `B`-invariance of `K_min`, which retro-explains §15 |
+| derived + verified offline | focus locus closed form incl. the `2*fc/f_m` alias, 1.3e-4 (§40.1); pencil-of-lines geometry (§40.2); `d_alpha = 2/(d*Nt^2)` (§40.4) |
+| derived + independently verified | residual attenuation `2*fH/B ~ 13x`; bit saving `log2(2*fH/B) = 3.70` predicted vs ~4 measured (§11) |
+| derived, inherited | `Delta <= 2/P` — their (43)-(44) (§19-§20) |
+| argued, ours, qualitative | uniform comb optimality (§20.4) |
+| empirical, no closed form | `maxgap <~ 3` (§21); `range x K ~ 450` (§38.1); the sector-vs-`K_alpha` cost ratio ~1.3x (§41.3); the residual `s`-dependence at fixed `N_sec*s` (§41.5) |
+
+The coverage law has now cleared the gate it was written to face. What remains
+open is unchanged from §40.8 apart from the two corrections above: the `maxgap`
+threshold, `range x K`, and the low-SNR collapse have no closed form, and the
+`L` threshold for when `fc` compensation starts to matter has never been derived.
