@@ -2800,9 +2800,18 @@ and varying the split at `L = 2`:
 
     (2,6) -> 1.43    (4,3) -> 1.45    (3,4) -> 1.44    (6,2) -> 1.44
 
-Flat. **The `L = 2` anomaly is not the split.** (The same test at `L = 8` shows
-`(8,1) -> 8.23` vs `(4,3) -> 2.61`, which is contribution B reappearing in the
-geometry — that part is consistent.)
+Flat. (The same test at `L = 8` shows `(8,1) -> 8.23` vs `(4,3) -> 2.61`, which
+is contribution B reappearing in the geometry — that part is consistent.)
+
+**CAVEAT ON MY OWN TEST, and it is a real one.** That confound check was run with
+the offline statistic — the very statistic this section has just shown is wrong at
+`L = 2`. A tool that mispredicts the `L = 2` gain by a sign is not trustworthy
+evidence about what does or does not move the `L = 2` gain. So the correct
+statement is weaker than "the anomaly is not the split": **the split is not
+implicated by the geometry, and the geometry cannot settle it.**
+`ablation_ps.m` must be re-run at `L = 2` with `(N_sec, K_alpha) = (4, 3)` — the
+same split the other rows use — before limitation #2 ("`L = 2` gives no gain") is
+quoted as a property of `L`. One MATLAB run, and it is cheap.
 
 So the effect is real and lives **outside** the focus-table geometry. What the
 statistic does not model: the wideband behaviour of the serving beam (it scores a
