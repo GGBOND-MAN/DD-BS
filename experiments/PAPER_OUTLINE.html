@@ -195,7 +195,8 @@
           <b>残差衰减</b> <span class="m">2πf<sub>m</sub>Δτ → 2π(f<sub>m</sub>−f<sub>c</sub>)Δτ</span>，因子 <span class="m">2f<sub>H</sub>/B ≈ 13×</span>；
           预测比特节省 <span class="m">log₂(2f<sub>H</sub>/B) = 3.70</span>，实测 ~4<br>
           <b>焦点轨迹闭式</b>（含频变混叠模数 <span class="m">2f<sub>c</sub>/f<sub>m</sub></span>）→ 复现 <span class="m">actual_focus</span> 到 <span class="m">1.3e-4</span><br>
-          <b>覆盖律</b> <span class="m">N<sub>sec</sub>·n<sub>tr</sub> ≥ H·d·N<sub>t</sub>²/4</span>，即 <span class="m">N<sub>sec</sub>·s ≥ C = 2.96</span>，<b>12/12 零拟合</b><br>
+          <b>近场聚焦深度</b> <span class="m">δα = 2/(d·N<sub>t</sub>²)</span>（孔径边缘二次相位 = π/2），与数值 |g|=0.9 等值线差 2.8%<br>
+          <b>覆盖律</b> <span class="m">N<sub>sec</sub>·n<sub>tr</sub> ≥ H/(2δα) = H·d·N<sub>t</sub>²/4</span>，即 <span class="m">N<sub>sec</sub>·s ≥ C = 2.96</span>，<b>12/12 零拟合</b><br>
           <b>K<sub>min</sub> 与 B 无关</b>——B 在推导中消掉，反过来解释了 §15 那次证伪
         </td><td class="m">THEORY §11<br>THEORY §40</td></tr>
         <tr><td><b>推导，但是<br>继承的</b></td><td><span class="m">Δ ≤ 2/P</span> 立在子阵 Dirichlet 主瓣 3-dB 论证上，是他们的 (43)-(44) 加 <span class="m">u<sub>3dB</sub>≈1.39</span>。
@@ -214,6 +215,11 @@
     现在闭合了：焦点轨迹是<b>过枢轴的直线束</b>，每个栅瓣阶次一条；由他们的 (63)，
     <b>扫描强度 S 就是枢轴到扇区目标的距离</b>。每根导频的<b>距离覆盖恒为 H</b>（他们 (69) 的构造），
     <b>s 买的是角度遍历次数</b> <span class="m">n<sub>tr</sub> ∝ s</span>。</div>
+    <div class="note" style="border-left-color:var(--ok);background:var(--ok-bg)"><b>最该写进论文的一段：这条律做过前向预测，然后被验证。</b>
+    推完之后先算出"s=1/8 时纯靠扇区需要 N<sub>sec</sub> ≈ 41.5"，<b>再</b>去扫：
+    <span class="m">N<sub>sec</sub></span> = 24 → 0.815（不过）、32 → 0.908（不过）、<b>42 → 0.959（过）</b>、48 → 0.972。
+    <br>而 12 格的分离表里，推出的阈值 8.21 正好落在最后一个失败点（6.51）与第一个通过点（8.68）之间。
+    <b>"先预测后验证"这个顺序本身就是论据</b>，写作时要把顺序讲清楚，不要写成事后拟合。</div>
     <div class="red"><b>§39 的一处归因错误已更正，写作时不要沿用旧版。</b>
     覆盖约束绑在 <b>N<sub>sec</sub></b> 上而不是 K——<span class="m">hw_budget.m</span> 固定 <span class="m">N<sub>sec</sub>=8</span> 扫 <span class="m">K<sub>α</sub></span>，
     两者是同一根轴。<b>这正是 §18 那个教训的重演</b>（绝不在候选变量被绑定的轨迹上拟合不变量），而规矩是我们自己写的。
