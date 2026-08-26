@@ -2444,9 +2444,17 @@ table (`alias_orders.py`):
 
 | `s` | predicted | orders `j` actually visible |
 |---|---|---|
-| 1 | 3.5 | **-2, -1, 0** (3) |
+| 1 | 3.5 | **-2, -1, 0** full, plus **-3** partial (7% of the band) |
 | 1/4 | 1.5 | **11** (1) |
 | 1/8 | 1.2 | **13** (1) |
+
+**Amended when `fig8_pencil.m` was built.** The closed form, filtered to the
+`|theta| <= 0.9` search region, gives **four** orders at `s = 1`:
+`-2` (35.9% of subcarriers), `-1` (33.7%), `0` (11.9%) and `-3` (7.3%, confined to
+`theta` in [0.54, 0.90]). `alias_orders.py` reported three because it takes the
+alias nearest the *measured* peak, and near the band edge two aliases have
+comparable gain. Quote "three full branches plus a partial one", not "three" —
+the predicted 3.5 is between the two readings either way.
 
 > A fast sweep crosses the angular window many times and samples distance finely
 > at each crossing. A slow sweep crosses it less than once, covering the whole
