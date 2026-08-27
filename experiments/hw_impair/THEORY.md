@@ -2444,9 +2444,17 @@ table (`alias_orders.py`):
 
 | `s` | predicted | orders `j` actually visible |
 |---|---|---|
-| 1 | 3.5 | **-2, -1, 0** (3) |
+| 1 | 3.5 | **-2, -1, 0** full, plus **-3** partial (7% of the band) |
 | 1/4 | 1.5 | **11** (1) |
 | 1/8 | 1.2 | **13** (1) |
+
+**Amended when `fig8_pencil.m` was built.** The closed form, filtered to the
+`|theta| <= 0.9` search region, gives **four** orders at `s = 1`:
+`-2` (35.9% of subcarriers), `-1` (33.7%), `0` (11.9%) and `-3` (7.3%, confined to
+`theta` in [0.54, 0.90]). `alias_orders.py` reported three because it takes the
+alias nearest the *measured* peak, and near the band edge two aliases have
+comparable gain. Quote "three full branches plus a partial one", not "three" —
+the predicted 3.5 is between the two readings either way.
 
 > A fast sweep crosses the angular window many times and samples distance finely
 > at each crossing. A slow sweep crosses it less than once, covering the whole
@@ -2622,3 +2630,235 @@ coverage constraint contains `N_sec` and `n_tr`, neither of which contains `L`.
 The chain `sharing -> focus shift -> coverage hole -> failure` now has a
 quantitative middle. What remains open is the `maxgap` threshold and the
 `range x K` law, both of which the paper can carry as measured design rules.
+
+---
+
+## 41. END-TO-END CONFIRMED — the law survives, and two of §40's side-claims do not
+
+`kmin_theory.m`, 28 cells, `L = 8` (32 TTDs both stages), `K_alpha = 1`,
+`N_iter = 100`, reference 6.546. This is the run §40.8 said the law had to pass:
+**real channel, real rates, not the offline coverage statistic.**
+
+### 41.1 The result
+
+    N_sec * s >= C = 2.959      28/28 correct classification at the >=95% criterion
+
+Sorted by `N_sec*s`, the pass/fail boundary is **clean with no overlap**:
+
+| `N_sec*s` | cells | rate range |
+|---|---|---|
+| 1.00 - 2.00 | 4 (all fail) | 80.3%, 87.4%, 92.1%, **93.7%** |
+| 3.00 - 48.0 | 24 (all pass) | **95.5%**, 97.5%, ... 100.5% |
+
+**Measured bracket: `C` in (2, 3]. Derived `C = 2.959` lands inside it.** Nothing
+was fitted — every quantity comes from the system parameters or OJ-COMS's own
+(63)/(69).
+
+**The margin, stated honestly.** The bracket edges differ by a factor 1.5, so the
+grid resolves `C` only to that factor, and 2.959 sits **1.4% below the lowest
+passing cell**. Re-deriving with the numerically exact `d_alpha` (5.939e-3 instead
+of the `pi/2` value 6.104e-3) gives `C = 3.041`, which misclassifies the two cells
+sitting exactly at `N_sec*s = 3` — 26/28. **So "28/28" depends on two cells with a
+1.4% margin.** The defensible claim is: *`C` is confirmed to the factor-1.5
+resolution of the grid, and the closed form lands inside the bracket.* Do not
+claim the `pi/2` convention is thereby shown exact.
+
+### 41.2 REFUTED — §40.3's "use the lattice-exact `n_tr`" is backwards
+
+§40.3 recommended the lattice-quantized form `N_sec*n_tr >= H*d*Nt^2/4` and called
+`∝ s` "the approximation". The end-to-end data says the opposite:
+
+| statistic | threshold | correct |
+|---|---|---|
+| **`N_sec * s`** | **2.959 (derived)** | **28/28** |
+| `N_sec * n_tr` | 7.987 (derived) | 25/28 |
+
+Both separate cleanly (`n_tr` bracket is (4.34, 4.75)), so the *ordering* is fine
+either way — but the lattice form's derived threshold is **1.7x too conservative**
+and misses three cells, all in the safe direction (predicted fail, measured
+95.5%, 97.5%, 98.3%).
+
+Why: the lattice correction bites hardest exactly where the misses are.
+`n_tr/s` = 2.547, 2.421, 2.169, **1.582** for `s` = 1, 1/2, 1/4, 1/8 — a 38%
+deficit at the smallest sweep rate. The smooth `(fc/fH)*S*Lambda/2` estimate does
+not take that penalty and tracks the rate better. **I do not have a derivation for
+why the smooth estimate is the right one; the experiment selects it.** A plausible
+account — the >=95% rate criterion is soft (the rate is a log), so a coverage
+deficit degrades the rate gradually while the lattice form treats it as a cliff —
+is a description, not a mechanism, and is recorded as such.
+
+**Consequence for the paper: quote the law in the `N_sec*s >= C` form.**
+
+### 41.3 REFUTED — §40.6's "distance interleaving is 2.6x cheaper than sectors"
+
+That number came from the offline statistic, which predicted sectors alone would
+need `N_sec ~ 42` at `s = 1/8`. End-to-end they need **24**. With the offline
+pessimism removed, the ranking reverses:
+
+| `s` | cheapest via **sectors** | cheapest via `K_alpha` |
+|---|---|---|
+| 1/4 | **K = 12** (95.5%) | K = 16 (98.0%) |
+| 1/8 | **K = 24** (97.5%) | K = 32 (97.6%) |
+
+**Sector shifting is the cheaper way to buy coverage, by ~1.3x** — not the more
+expensive one. §40.6's *mechanism* finding stands unchanged (`K_alpha` reaches
+>=95% while `N_sec*s` stays at 1-2, far below threshold, so it is genuinely a
+different primitive working through the `alpha_min` clamping); what is refuted is
+the efficiency ranking built on top of it.
+
+**This strengthens contribution B rather than weakening it.** "Spend pilots on
+sectors, not on distance interleaving" was previously demonstrated only at `s = 1`
+(§27). It now holds at **every sweep rate measured**, and the cost ratio is
+quantified. Fix the 2.6x wherever it appears.
+
+### 41.4 What the offline statistic is good for, and what it is not
+
+`P(g>0.9)` (§40.5) is systematically **pessimistic at small `s`**: it called
+(1/8, 24) and (1/8, 32) failures at 0.815 / 0.908 where the real rates are 97.5% /
+98.3%. Its Spearman against measured rates was already only 0.907. So:
+
+- **Use it for**: exploring the (s, N_sec, K_alpha) space cheaply offline, and for
+  the mechanism diagnostics of §40.6, which it settles correctly.
+- **Do not use it for**: any quantitative pilot-count claim. Every such number in
+  the paper must come from `kmin_theory.m` / `hw_budget.m`, not from the port.
+
+### 41.5 Residual spread the law does not explain
+
+At equal `N_sec*s` the rate still moves by up to 3 points, systematically with `s`:
+at `N_sec*s = 8`, `s = 1/4` reads 99.9% while `s = 1` reads 97.2%. So the statistic
+is a **pass/fail separator, not a rate model** — the same caveat §40.5 attached to
+the offline proxy now attaches to the law itself. State it; do not draw a fitted
+curve through these points.
+
+### 41.6 Theory status after §41
+
+| tier | result |
+|---|---|
+| derived + confirmed end-to-end | **coverage law `N_sec*s >= C`, `C = H*d*Nt^3*xi_H^2/(3.52*gamma*M) = 2.959`, 28/28 on the real channel, zero fitted parameters (§41.1)**; `B`-invariance of `K_min`, which retro-explains §15 |
+| derived + verified offline | focus locus closed form incl. the `2*fc/f_m` alias, 1.3e-4 (§40.1); pencil-of-lines geometry (§40.2); `d_alpha = 2/(d*Nt^2)` (§40.4) |
+| derived + independently verified | residual attenuation `2*fH/B ~ 13x`; bit saving `log2(2*fH/B) = 3.70` predicted vs ~4 measured (§11) |
+| derived, inherited | `Delta <= 2/P` — their (43)-(44) (§19-§20) |
+| argued, ours, qualitative | uniform comb optimality (§20.4) |
+| empirical, no closed form | `maxgap <~ 3` (§21); `range x K ~ 450` (§38.1); the sector-vs-`K_alpha` cost ratio ~1.3x (§41.3); the residual `s`-dependence at fixed `N_sec*s` (§41.5) |
+
+The coverage law has now cleared the gate it was written to face. What remains
+open is unchanged from §40.8 apart from the two corrections above: the `maxgap`
+threshold, `range x K`, and the low-SNR collapse have no closed form, and the
+`L` threshold for when `fc` compensation starts to matter has never been derived.
+
+---
+
+## 42. Feasibility of the remaining derivations — one closes, one does not
+
+Three items were left open at §41.6. Two are settled here.
+
+### 42.1 `range x K` — CLOSES, as a corollary of the coverage law
+
+§38.1's `range x K ~ 450 ns-pilots` was filed as empirical. It follows from §41:
+
+    range ∝ |theta_t| = |theta_M - (fc/fH)*S| / rho_theta ≈ kappa(s)*s
+    coverage law:  N_sec * s >= C
+    =>             range x N_sec  >=  kappa * C
+
+`kappa = range/s` drifts 25% across the sweep (132.6 -> 103.2, because the
+`theta_M` offset in (63) makes `range` not exactly proportional to `s`), so the
+corollary predicts a **band, not a constant**: `[305, 392] ns-pilots`.
+
+Against the `K_alpha = 1` frontier from `kmin_theory.m`:
+
+| `s` | range | `N_sec` min | `range x N_sec` | binding constraint |
+|---|---|---|---|---|
+| 1 | 132.6 ns | 8 | 1061 | `N_sec >= L = 8` |
+| 1/2 | 64.2 ns | 8 | 514 | `N_sec >= L = 8` |
+| **1/4** | **30.0 ns** | **12** | **360** | **coverage** |
+| **1/8** | **12.9 ns** | **24** | **310** | **coverage** |
+
+**Both coverage-limited rows land inside the predicted band.** The two large-`s`
+rows read 1061 and 514 because `N_sec` there is floored by the sharing constraint,
+not by coverage — they are not on the coverage frontier at all, and the old "450"
+averaged across that boundary.
+
+**Restate the law as `range x N_sec >= kappa*C`, valid where coverage binds**, and
+note that the `K_alpha`-based frontier mixes in the second primitive (§41.3) so it
+must not be quoted as the same law.
+
+### 42.2 The `L` threshold — NOT reachable from §40's geometry. Tested, not assumed.
+
+`theory/lthresh.py` puts both ablation arms through the §40 focus geometry at the
+exact `ablation_ps.m` operating point (`K = 12`, `N_sec = min(4,L)`), and compares
+the predicted compensation gain against the measured one:
+
+| `L` | geometry predicts | measured (N=200) |
+|---|---|---|
+| 1 | 1.00 | **1.00 ± 0.00** |
+| **2** | **1.43** | **0.98 ± 0.08** |
+| 4 | 2.49 | 2.81 ± 0.50 |
+| 8 | 2.61 | 4.70 ± 1.17 |
+| 16 | 1.22 | 2.58 ± 0.53 |
+
+`L` = 4, 8, 16 are right in direction and short in magnitude — consistent with
+§41.4's finding that the offline statistic is pessimistic. **`L = 2` has the wrong
+sign of error**: the geometry says compensation should buy 43%, the measurement
+says it buys nothing.
+
+**The obvious confound was checked and refuted.** `ablation_ps.m` gives `L = 2` the
+split `(N_sec, K_alpha) = (2, 6)` while `L` = 4/8/16 all get `(4, 3)`, so `L` is
+confounded with the split along that sweep — the §18/§39 pattern. Holding `K = 12`
+and varying the split at `L = 2`:
+
+    (2,6) -> 1.43    (4,3) -> 1.45    (3,4) -> 1.44    (6,2) -> 1.44
+
+Flat. (The same test at `L = 8` shows `(8,1) -> 8.23` vs `(4,3) -> 2.61`, which
+is contribution B reappearing in the geometry — that part is consistent.)
+
+**CAVEAT ON MY OWN TEST, and it is a real one.** That confound check was run with
+the offline statistic — the very statistic this section has just shown is wrong at
+`L = 2`. A tool that mispredicts the `L = 2` gain by a sign is not trustworthy
+evidence about what does or does not move the `L = 2` gain. So the correct
+statement is weaker than "the anomaly is not the split": **the split is not
+implicated by the geometry, and the geometry cannot settle it.**
+`ablation_ps.m` must be re-run at `L = 2` with `(N_sec, K_alpha) = (4, 3)` — the
+same split the other rows use — before limitation #2 ("`L = 2` gives no gain") is
+quoted as a property of `L`. One MATLAB run, and it is cheap.
+
+So the effect is real and lives **outside** the focus-table geometry. What the
+statistic does not model: the wideband behaviour of the serving beam (it scores a
+narrowband gain at `fc`), the training-stage selection under noise, and the
+per-subcarrier rate integration. At `L = 2` the measured *uncompensated* arm
+(5.481) beats what the geometry predicts (4.520), so the missing physics favours
+the uncompensated arm specifically at small `L`.
+
+**Verdict: not an extension of §40 — a new mechanism would be required.** Four
+mechanism attempts have already been refuted (§15, §16, §16.2, §17.2); the prior
+on a fifth succeeding is poor and the cost is high. **Recommendation: do not
+attempt it.** Keep the `L >= 4` restriction as a measured limitation, which is
+also the form that agrees with OJ-COMS's own published conclusion.
+
+### 42.3 The low-SNR threshold — assessed as derivable, NOT yet done
+
+The decision is `argmax` over `M = 1024` noisy subcarrier samples, so the collapse
+is a **selection problem**, and selection among `M` competitors has a standard
+extreme-value form: the SNR at which the true peak reliably wins scales as
+`ln(M)`. `ln(1024) = 6.93`, i.e. **8.4 dB** — against a measured knee "below about
+10 dB" (9% at 0 dB, 23% at 5 dB, 97-98% at >=20 dB).
+
+That agreement is encouraging but it is an estimate, not a derivation: the
+simulation's SNR axis is pre-beamforming and includes path loss and array gain, so
+mapping `8.4 dB` onto the plotted axis needs care, and the `ln M` scaling gives
+only a **0.45 dB** shift for a 2x change in `M` — too small to test by halving `M`.
+A usable test sweeps `M` over 256-4096 (predicted 1.76 dB shift) or checks the
+predicted **shape** `P(correct) = F(x)^{M-1}`, which is parameter-free.
+
+**This is the one remaining item with a good ratio of value to risk**: it converts
+limitation #1 from "we also collapse" into "we collapse here, and the threshold is
+`ln M`". Not started.
+
+### 42.4 Updated status
+
+| item | verdict |
+|---|---|
+| `range x K` | **DERIVED** (§42.1), corollary of the coverage law, band `[305, 392]` |
+| `maxgap <~ 3` | not attempted, and should not be — numerical test, §31.1 stands |
+| `L` threshold | **tested and abandoned** (§42.2) — outside §40's geometry |
+| sector vs `K_alpha` cost ratio ~1.3x | empirical (§41.3), no attempt planned |
+| low-SNR threshold `∝ ln M` | **derivable, not done** (§42.3) — the one item worth starting |

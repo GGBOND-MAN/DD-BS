@@ -74,6 +74,7 @@ fprintf('derived C (N_sec*s form) = %.3f      reference (ungrouped, 12 pilots) =
 fprintf('PART 1 -- N_sec sweep at K_alpha = 1, L = %d (%d TTDs).  N_sec >= L is the sec 27 floor.\n', L, Nt/L);
 fprintf('%6s %6s %6s | %8s %10s | %8s %5s | %s\n', ...
         's','N_sec','K','n_tr','N_sec*n_tr','rate','%ref','derived call');
+RES = zeros(0,8);   % [s Nsec K n_tr Nsec*s Nsec*n_tr rate pct] -- saved for fig9
 for s_sw = [1 1/2 1/4 1/8]
   for Ns = [8 12 16 24 32 42 48]
       [sec, rho, dbg] = ojcoms_algorithm1(Nt,fc,B,M,d,L,thlim,alim,gamma,Ns,1,s_sw);
@@ -84,9 +85,13 @@ for s_sw = [1 1/2 1/4 1/8]
       call = 'fail';  if Ns*ntr >= T, call = 'PASS'; end
       fprintf('%6.3f %6d %6d | %8.4f %10.2f | %8.3f %4.0f%% | %s\n', ...
               s_sw, Ns, numel(sec), ntr, Ns*ntr, r, 100*r/r_ref, call);
+      RES(end+1,:) = [s_sw Ns numel(sec) ntr Ns*s_sw Ns*ntr r 100*r/r_ref]; %#ok<SAGROW>
   end
   fprintf('\n');
 end
+
+save('kmin_theory_results.mat','RES','C_pred','T','r_ref','Nt','L','B','fc','M','N_iter');
+fprintf('saved kmin_theory_results.mat (%d cells) -- fig9_coverage_law.m plots it\n\n', size(RES,1));
 
 fprintf('PART 2 -- K_alpha is a different primitive (sec 40.6), not more sectors.\n');
 fprintf('%6s %6s %3s %6s | %10s | %8s %5s\n','s','N_sec','Ka','K','N_sec*n_tr','rate','%ref');
