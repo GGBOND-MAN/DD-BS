@@ -257,7 +257,7 @@
       <thead><tr><th class="n">#</th><th>局限</th><th>怎么写</th></tr></thead>
       <tbody>
         <tr><td class="n">1</td><td><b>低 SNR（&lt;10 dB）我们也塌</b>：0 dB 只有 9%，5 dB 只有 23%</td><td>说清成因——判决是 M=1024 路 argmax，门限由<b>选择问题</b>决定而非阵列增益。并注明"估计器已无余量"是 <b>20 dB 的结论</b>（0 dB 处 oracle/coarse = 11×）</td></tr>
-        <tr><td class="n">2</td><td><b>L=2 无增益</b>：0.98±0.08</td><td>主张限定为 <b>L≥4</b>，即超出 OJ-COMS 已发表工作点的共享。这与他们的结论一致，是加分不是减分</td></tr>
+        <tr><td class="n">2</td><td><b>在他们发表的 L=2 工作点上我们输 17%</b>（Table 3，N<sub>sec</sub>=4，K<sub>α</sub>=3：他们 6.446 vs 我们 5.380）</td><td><b>旧的「L=2 无增益，主张限定 L≥4」是错的，已删。</b>§44 查明那是<b>参数来源</b>不是 L：同一拆分下解析参数给 1.43，Table 3 给 0.83；固定来源扫拆分则平在 1.40–1.43。两条臂在换来源时<b>反向移动</b>（Table 3 让他们 +41%、让我们 −17%），说明 Table 3 是为<b>未补偿</b>的 PS 调的。<br><b>正确写法两句都要有</b>：① 消融增益 L=1…16 = 1.00/1.43/2.85/4.65/2.92，<b>L≥4 的限制取消</b>；② 我们<b>没有</b>为补偿后的架构重新设计参数，所以在他们调好的工作点上落后 17%。这条有现成的归宿：Nguyen &amp; Kim TCOM 2024 主张的正是联合 TTD-PS 设计（§05-3）</td></tr>
         <tr><td class="n">3</td><td><b>仍超集成 508 ps 器件 25 倍</b></td><td><b>不要用 realizable 一词。</b>写成"需求从每元件 40 m 线降到 3.9 m，即开关延迟线/光纤延迟这一类"，点名器件类别 + 报出残余倍数</td></tr>
         <tr><td class="n">4</td><td><b>α′<sub>p</sub> 与他们 (69) 矛盾</b>，我们采用 (69) 的 0.5809</td><td>中立叙述 + 给理由 + <b>附录放 0.158 的结果表</b>。关键论据：0.5809 复现了他们 Fig 8 的全部五个点</td></tr>
         <tr><td class="n">5</td><td><b>距离交织方式是我们的解释</b>，原文未规定</td><td>明说"their text does not specify the interleave"，并给出我们用的居中嵌套构造。<b>不能把由此产生的现象算到他们头上</b>。
@@ -267,6 +267,11 @@
         <tr><td class="n">7</td><td><b>覆盖律的常数只定到 1.5 倍精度</b>（端到端已确认，但余量要报）</td><td>28/28 是真的，但实测括号是 (2,3]，两端差 1.5 倍；2.96 距最低通过格 1.4%，改用数值 δα 就变 26/28。<b>写成"落在括号内"而非"精确"。</b>另外它<b>不是速率模型</b>：等 <span class="m">N<sub>sec</sub>·s</span> 处速率仍差 3 点（s=1/4 读 99.9%、s=1 读 97.2%），<b>不要在这些点上拟合曲线</b>。<br><b>离线代理量 <span class="m">P(g&gt;0.9)</span> 在小 s 处系统性悲观</b>（把 97.5% 和 98.3% 的格判成不过），只能用于机理诊断，<b>论文里任何导频数字都必须来自 MATLAB</b></td></tr>
       </tbody>
     </table></div>
+    <div class="red"><b>措辞上限,不可选。</b>L=2 处两种参数来源在<b>他们自己那条臂上差 41%</b>（6.446 vs 4.565），
+    所以解析重构在 L=2 处<b>不是</b>他们设计的忠实替身；而 L≥4 根本没有 Table 3 可比，
+    <b>我们无从知道重构在那里是否也削弱了他们的方案</b>，没有他们的代码也补不上。
+    因此：增益只能写成<b>「固定参数集下的消融比值」</b>（两条臂共用参数，比值对参数是谁的免疫），
+    <b>绝不能写成「我们赢过他们发表的系统」</b>——那个只在 L=2 可测，而且我们输。</div>
     <div class="note"><b>这七条单开一小节，不要塞脚注。</b>主动写全的局限章节会显著提高可信度——
     审稿人看到你已经想到他要问的，剩下的质疑会集中在能改的地方。</div>
   </div>
@@ -280,9 +285,10 @@
     <div class="scroll"><table>
       <thead><tr><th>量</th><th class="n">值</th><th>来源</th></tr></thead>
       <tbody>
-        <tr><td>消融增益 L=4 / 8 / 16</td><td class="n">2.81±0.50 / 4.70±1.17 / 2.58±0.53</td><td class="m">ablation_ps</td></tr>
-        <tr><td>零对照 L=1</td><td class="n">1.00±0.00</td><td class="m">ablation_ps</td></tr>
-        <tr><td>L=2（无增益）</td><td class="n">0.98±0.08</td><td class="m">ablation_ps</td></tr>
+        <tr class="hi"><td><b>消融增益 L=1/2/4/8/16</b></td><td class="n"><b>1.00±0.00 / 1.43±0.12 / 2.85±0.51<br>4.65±1.18 / 2.92±0.59</b><br>配对检验，两条臂同噪声</td><td class="m"><b>ablation_split</b><br>（勿再引 ablation_ps，见 §06-2）</td></tr>
+        <tr class="hi"><td><b>补偿臂对共享几乎不敏感</b></td><td class="n">L=1/2/4 → 6.524 / 6.513 / <b>6.485</b><br><b>TTD 减到 1/4，只掉 0.6%</b></td><td class="m">ablation_split</td></tr>
+        <tr><td>零对照 L=1（硬检查）</td><td class="n">配对差 <b>+0.000±0.000</b>（两条臂同噪声，波束相同）</td><td class="m">ablation_split</td></tr>
+        <tr><td>他们发表的 L=2 工作点</td><td class="n">他们 6.446 vs 我们 5.380（<b>我们 −17%</b>）</td><td class="m">ablation_split 1b</td></tr>
         <tr class="hi"><td>32 TTD，8 导频</td><td class="n">6.403±0.069（98%）</td><td class="m">sector_alloc</td></tr>
         <tr><td>他们的拆分，12 导频</td><td class="n">4.742±0.344（73%）</td><td class="m">sector_alloc</td></tr>
         <tr><td>速率–SNR：ours vs theirs（≥20 dB）</td><td class="n">97–98% vs ≤18%</td><td class="m">rate_vs_snr</td></tr>

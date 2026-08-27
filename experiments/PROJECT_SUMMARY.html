@@ -382,23 +382,32 @@
 
   <div class="fig" style="margin-top:12px">
     <h3>E · 单变量消融：只改相移器里的一项</h3>
-    <p class="cap">导频、查找表、信道实现全部相同，K=12 固定；服务波束也在同样的 N<sub>TTD</sub> 上。均值 ± 95% CI，200 条信道。</p>
+    <p class="cap">导频、查找表、信道实现全部相同，K=12 固定，拆分固定 (N<sub>sec</sub>,K<sub>α</sub>)=(4,3)，参数来源固定为解析 (61)-(63)；服务波束也在同样的 N<sub>TTD</sub> 上。
+    <b>配对检验</b>：两条臂重置同一噪声种子，200 条信道。数据源 <span class="m">ablation_split.m</span> PART 2。</p>
     <div class="scroll"><table>
       <thead><tr><th class="n">L</th><th class="n">N<sub>TTD</sub></th><th class="n">他们的 PS</th><th class="n">补偿后</th><th class="n">增益</th><th class="n">他们 Fig 8</th></tr></thead>
       <tbody>
-        <tr><td class="n">1</td><td class="n">256</td><td class="n">6.524±0.023</td><td class="n">6.538±0.019</td><td class="n"><b>1.00±0.00</b></td><td class="n">~6.5</td></tr>
-        <tr><td class="n">2</td><td class="n">128</td><td class="n">5.481±0.326</td><td class="n">5.383±0.329</td><td class="n"><b>0.98±0.08</b></td><td class="n">~5.0</td></tr>
-        <tr class="hi"><td class="n">4</td><td class="n">64</td><td class="n">2.313±0.411</td><td class="n">6.490±0.021</td><td class="n"><b>2.81±0.50</b></td><td class="n">~2.2</td></tr>
-        <tr class="hi"><td class="n">8</td><td class="n">32</td><td class="n">0.982±0.233</td><td class="n">4.613±0.357</td><td class="n"><b>4.70±1.17</b></td><td class="n">~0.6</td></tr>
-        <tr class="hi"><td class="n">16</td><td class="n">16</td><td class="n">1.212±0.202</td><td class="n">3.128±0.376</td><td class="n"><b>2.58±0.53</b></td><td class="n">~0.4</td></tr>
+        <tr><td class="n">1</td><td class="n">256</td><td class="n">6.524</td><td class="n">6.524</td><td class="n"><b>1.00±0.00</b></td><td class="n">~6.5</td></tr>
+        <tr class="hi"><td class="n">2</td><td class="n">128</td><td class="n">4.565</td><td class="n">6.513</td><td class="n"><b>1.43±0.12</b></td><td class="n">~5.0</td></tr>
+        <tr class="hi"><td class="n">4</td><td class="n">64</td><td class="n">2.273</td><td class="n">6.485</td><td class="n"><b>2.85±0.51</b></td><td class="n">~2.2</td></tr>
+        <tr class="hi"><td class="n">8</td><td class="n">32</td><td class="n">1.006</td><td class="n">4.676</td><td class="n"><b>4.65±1.18</b></td><td class="n">~0.6</td></tr>
+        <tr class="hi"><td class="n">16</td><td class="n">16</td><td class="n">1.089</td><td class="n">3.180</td><td class="n"><b>2.92±0.59</b></td><td class="n">~0.4</td></tr>
       </tbody>
     </table></div>
-    <p style="margin-top:10px"><b>L=1 给出精确的 1.00±0.00</b>——无共享时那一项是全局常数，必须抵消。这是一个实验本可以失败而没有失败的零对照。
-    「他们的 PS」一列在五个点上都跟住了他们的 Fig 8。</p>
-    <div class="red"><b>两处必须写进论文的修正。</b>
-    ① <b>L=2 是 0.98±0.08，没有增益</b>——`N_iter=20` 时读到的 1.06~1.08× 是噪声。这反而让故事更准：
-    OJ-COMS 自己证明 L=2 可用、L≥3 不可用，<b>所以主张是关于 L≥4，即超出他们已发表工作点的共享</b>，不是笼统的改进。
-    ② L≥4 的增益是 <b>2.6~4.7×，相对 CI 约 20%</b>——真实（CI 都不含 1.0），但<b>不能报三位有效数字</b>。</div>
+    <p style="margin-top:10px"><b>L=1 的配对差是精确的 +0.000±0.000</b>——两条臂同噪声、无共享时波束相同，所以这是一次<b>硬检查</b>而不是统计检查，它通过了。
+    另一个该引的数字：补偿臂在 L=1/2/4 读 <b>6.524 / 6.513 / 6.485</b>——<b>TTD 减到 1/4 只掉 0.6%</b>。</p>
+    <div class="red"><b>「L=2 无增益」已被推翻——是参数来源，不是 L（§04-bis / THEORY §44）。</b>
+    固定来源为解析、扫五种拆分：<b>1.41 / 1.43 / 1.43 / 1.40 / 1.82</b>，平的。固定拆分、换来源：<b>1.43 → 0.83</b>。
+    拆分把增益挪 0.03，来源挪 0.6。两条臂换来源时<b>反向移动</b>（Table 3 让他们 +41%、让我们 −17%），
+    所以 <b>Table 3 是为未补偿的 PS 调的</b>，补偿后的架构有它自己的最优参数。
+    <br><b>旧的 ablation_ps.m 那一行还有第三个缺陷</b>：<span class="m">Nsec=min(4,L)</span> 在 L=2 给出 N<sub>sec</sub>=2，
+    而他们发表的配置是 N<sub>sec</sub>=4——<b>已发表的图把他们的 L=2 臂低估了 18%</b>。从此引 <span class="m">ablation_split.m</span> PART 2。</div>
+    <div class="red"><b>换来的是一条更硬的局限，必须写。</b>
+    在他们<b>发表的</b> L=2 工作点（Table 3，N<sub>sec</sub>=4，K<sub>α</sub>=3）：他们 <b>6.446</b>，我们 <b>5.380</b>——<b>我们输 17%</b>。
+    我们没有为补偿后的架构重新设计参数。归宿是现成的：Nguyen &amp; Kim TCOM 2024 主张的就是联合 TTD-PS 设计（§08）。
+    <br><b>措辞上限</b>：L=2 处两种来源在他们自己那条臂上差 41%，所以解析重构不是他们设计的忠实替身；
+    L≥4 没有 Table 3 可比，<b>无从知道那里是否也削弱了他们</b>。增益只能写成<b>固定参数集下的消融比值</b>，
+    <b>不能写成「赢过他们发表的系统」</b>——那个只在 L=2 可测，而且我们输。</div>
   </div>
 
   <div class="fig" style="margin-top:12px">
