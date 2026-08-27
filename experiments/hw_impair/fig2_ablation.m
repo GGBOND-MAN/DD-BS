@@ -36,10 +36,19 @@ if exist('ablation_split_results.mat','file') ~= 2
     error('ablation_split_results.mat not found. Run ablation_split.m first.');
 end
 S  = load('ablation_split_results.mat');
-P2 = S.P2;                 % [L N_TTD mT cT mC cC dm dci g gci]
-P1 = S.P1;                 % [analytic? Nsec Ka mT cT mC cC dm dci g gci table3?]
-L  = P2(:,1); mT = P2(:,3); cT = P2(:,4); mC = P2(:,5); cC = P2(:,6);
-dm = P2(:,7); dci = P2(:,8); gg = P2(:,9);
+P2 = S.P2; P1 = S.P1;
+% NAMED COLUMN INDICES. The first version of this file hard-coded them and got
+% panel (c) wrong -- it plotted column 9 of P1, which is the CI of the paired
+% difference, as if it were the gain, so the bars read 0.39 instead of 1.43.
+% Both layouts share the same six-element report block, so name it once.
+%   P1 = [analytic?  Nsec Ka | mT cT mC cC dm dci g gci | table3?]
+%   P2 = [L N_TTD          | mT cT mC cC dm dci g gci ]
+q1 = 3; q2 = 2;                                  % offset of the report block
+[iMT,iCT,iMC,iCC,iDM,iDCI,iG,iGCI] = deal(1,2,3,4,5,6,7,8);
+P1SRC = 1; P1NS = 2; P1KA = 3; P1T3 = q1+8+1;    % = 12
+L  = P2(:,1);      mT  = P2(:,q2+iMT); cT = P2(:,q2+iCT);
+mC = P2(:,q2+iMC); cC  = P2(:,q2+iCC);
+dm = P2(:,q2+iDM); dci = P2(:,q2+iDCI); gg = P2(:,q2+iG);
 
 fig8L = [1 2 4 8 16];  fig8R = [6.5 5.0 2.2 0.6 0.4];   % read off their Fig. 8
 
@@ -76,18 +85,27 @@ title('(b)  paired gain, identical channels and noise');
 
 % ---------- (c) the L = 2 control ----------
 subplot(1,3,3); hold on; box on; grid on;
-A = P1(P1(:,1)==1, :);                       % analytic everywhere
-T = P1(P1(:,1)==0 & P1(:,12)==1, :);         % rows that actually used Table 3
+A = P1(P1(:,P1SRC)==1, :);                          % analytic everywhere
+T = P1(P1(:,P1SRC)==0 & P1(:,P1T3)==1, :);          % rows that actually used Table 3
+gA = A(:,q1+iG); gT = T(:,q1+iG);
 xa = 1:size(A,1);
-bar(xa, A(:,9), 0.55, 'FaceColor',[0.30 0.55 0.80],'EdgeColor','none', ...
+bar(xa, gA, 0.55, 'FaceColor',[0.30 0.55 0.80],'EdgeColor','none', ...
     'DisplayName','analytic (61)-(63)');
-[tf, loc] = ismember(T(:,2), A(:,2));        % match Table-3 rows to their split
+[tf, loc] = ismember(T(:,P1NS), A(:,P1NS));         % match Table-3 rows to their split
 xt = xa(loc(tf));
-bar(xt, T(tf,9), 0.28, 'FaceColor',[0.85 0.45 0.25],'EdgeColor','none', ...
+bar(xt, gT(tf), 0.28, 'FaceColor',[0.85 0.45 0.25],'EdgeColor','none', ...
     'DisplayName','their Table 3');
-plot([0.4 size(A,1)+0.6],[1 1],'k--','LineWidth',1.2,'DisplayName','no gain');
-set(gca,'XTick',xa,'XTickLabel',arrayfun(@(a,b)sprintf('(%d,%d)',a,b),A(:,2),A(:,3),'UniformOutput',false));
-xlim([0.4 size(A,1)+0.6]); ylim([0 max(A(:,9))*1.25]);
+plot([0.4 size(A,1)+0.6],[1 1],'k--','LineWidth',1.4,'DisplayName','no gain');
+for i = 1:numel(xa)
+    text(xa(i), gA(i)+0.06, sprintf('%.2f',gA(i)), 'HorizontalAlignment','center', ...
+         'FontSize',8,'Color',[0.15 0.30 0.50]);
+end
+for i = 1:numel(xt)
+    text(xt(i), gT(i)+0.06, sprintf('%.2f',gT(i)), 'HorizontalAlignment','center', ...
+         'FontSize',8,'Color',[0.55 0.25 0.10]);
+end
+set(gca,'XTick',xa,'XTickLabel',arrayfun(@(a,b)sprintf('(%d,%d)',a,b),A(:,P1NS),A(:,P1KA),'UniformOutput',false));
+xlim([0.4 size(A,1)+0.6]); ylim([0 max(gA)*1.30]);
 xlabel('(N_{sec}, K_\alpha) split at L = 2,  K = 12'); ylabel('gain,  r_{comp} / r_{theirs}');
 title('(c)  L = 2: the source decides, not the split');
 legend('Location','northwest','FontSize',8);
