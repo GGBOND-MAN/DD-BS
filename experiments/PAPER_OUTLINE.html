@@ -170,7 +170,7 @@
     <thead><tr><th class="n">图</th><th>内容</th><th>脚本</th><th class="n">状态</th></tr></thead>
     <tbody>
       <tr><td class="n">1</td><td>架构对比 + 残差公式</td><td class="m">—（纯示意，无需仿真）</td><td class="n">待画</td></tr>
-      <tr><td class="n">2</td><td>单变量消融，L=1 零对照</td><td class="m">ablation_ps.m</td><td class="n">✅ N=200 带 CI</td></tr>
+      <tr class="hi"><td class="n">2</td><td><b>单变量消融</b>：(a) 速率 vs L + 他们 Fig 8 对照；(b) 配对差 + 增益比；(c) L=2 拆分/来源对照</td><td class="m"><b>ablation_split.m → fig2_ablation.m</b><br>（勿用 ablation_ps.m，见 §06-2）</td><td class="n">✅ 配对，同噪声</td></tr>
       <tr><td class="n">3</td><td>主曲线 vs Δ·P/2，跨 P 验证</td><td class="m">pilot_spacing_map.m / kmin_fine.m</td><td class="n">✅</td></tr>
       <tr><td class="n">4</td><td>导频分配，负开销</td><td class="m">sector_alloc.m</td><td class="n">✅ N=200 带 CI</td></tr>
       <tr><td class="n">5</td><td>速率–SNR，四线分账</td><td class="m">rate_vs_snr.m</td><td class="n">✅ 已存 .mat</td></tr>
@@ -259,7 +259,7 @@
         <tr><td class="n">1</td><td><b>低 SNR（&lt;10 dB）我们也塌</b>：0 dB 只有 9%，5 dB 只有 23%</td><td>说清成因——判决是 M=1024 路 argmax，门限由<b>选择问题</b>决定而非阵列增益。并注明"估计器已无余量"是 <b>20 dB 的结论</b>（0 dB 处 oracle/coarse = 11×）</td></tr>
         <tr><td class="n">2</td><td><b>在他们发表的 L=2 工作点上我们输 17%</b>（Table 3，N<sub>sec</sub>=4，K<sub>α</sub>=3：他们 6.446 vs 我们 5.380）</td><td><b>旧的「L=2 无增益，主张限定 L≥4」是错的，已删。</b>§44 查明那是<b>参数来源</b>不是 L：同一拆分下解析参数给 1.43，Table 3 给 0.83；固定来源扫拆分则平在 1.40–1.43。两条臂在换来源时<b>反向移动</b>（Table 3 让他们 +41%、让我们 −17%），说明 Table 3 是为<b>未补偿</b>的 PS 调的。<br><b>正确写法两句都要有</b>：① 消融增益 L=1…16 = 1.00/1.43/2.85/4.65/2.92，<b>L≥4 的限制取消</b>；② 我们<b>没有</b>为补偿后的架构重新设计参数，所以在他们调好的工作点上落后 17%。这条有现成的归宿：Nguyen &amp; Kim TCOM 2024 主张的正是联合 TTD-PS 设计（§05-3）</td></tr>
         <tr><td class="n">3</td><td><b>仍超集成 508 ps 器件 25 倍</b></td><td><b>不要用 realizable 一词。</b>写成"需求从每元件 40 m 线降到 3.9 m，即开关延迟线/光纤延迟这一类"，点名器件类别 + 报出残余倍数</td></tr>
-        <tr><td class="n">4</td><td><b>α′<sub>p</sub> 与他们 (69) 矛盾</b>，我们采用 (69) 的 0.5809</td><td>中立叙述 + 给理由 + <b>附录放 0.158 的结果表</b>。关键论据：0.5809 复现了他们 Fig 8 的全部五个点</td></tr>
+        <tr><td class="n">4</td><td><b>α′<sub>p</sub> 与他们 (69) 矛盾</b>，我们采用 (69) 的 0.5809</td><td>中立叙述 + 给理由 + <b>附录放 0.158 的结果表</b>。<b>关键论据改用这一条</b>：0.158 让 α 扫过 [−0.387, −0.361]，<b>全部导频指向搜索区之外</b>，不可能产生他们发表的结果；而 0.5809 按构造正好扫过 [0.0025, 0.1]，且等于 DD-BS baseline 自己的 1859/3200。<br><b>旧论据「复现 Fig 8 全部五点」不成立，已删</b>（§45）：在他们发表的 (4,3) 拆分下 L=1/4 误差 &lt;0.1，L=2 差 0.45，<b>L=8/16 高 0.4–0.7</b>；旧的 (2,6) 版本同样在 L=8/16 高 0.38/0.81。改写成"复现了形状与坍塌点"，误差表放附录</td></tr>
         <tr><td class="n">5</td><td><b>距离交织方式是我们的解释</b>，原文未规定</td><td>明说"their text does not specify the interleave"，并给出我们用的居中嵌套构造。<b>不能把由此产生的现象算到他们头上</b>。
         §40.6 现在知道它<b>怎么</b>起作用：偏移把 87% 的扫描推到可实现 α 之外，重标定把 <b>40%</b> 的子载波钉在 α<sub>min</sub>，
         于是它成为一次平角度扫描——<b>所以这个机制属于我们的插值构造，不是他们方案的性质</b>，这一点必须写清楚</td></tr>
