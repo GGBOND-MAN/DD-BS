@@ -2955,3 +2955,120 @@ Re-run `ablation_split.m`. Until then:
 - **`ablation_ps.m`'s published `L = 2` row (0.98 ± 0.08) is a Table-3,
   `(2,6)` number.** Keep it, label it as that specific configuration, and stop
   quoting it as "the `L = 2` result".
+
+---
+
+## 44. RESOLVED — the `L = 2` anomaly is the PARAMETER SOURCE, and it exposes a limitation that has to go in the paper
+
+`ablation_split.m` re-run with `force_analytic` and an exact paired test.
+
+### 44.1 The split is nearly irrelevant; the source is decisive
+
+Holding the parameter source at **analytic (61)-(63)** and sweeping the split at
+`L = 2`, `K = 12`:
+
+| split | (2,6) | (3,4) | (4,3) | (6,2) | (12,1) |
+|---|---|---|---|---|---|
+| gain | 1.41 | 1.43 | 1.43 | 1.40 | **1.82** |
+
+Flat at 1.40-1.43 over four splits. Holding the **split** and switching the
+source instead:
+
+| split | analytic: theirs / ours / gain | Table 3: theirs / ours / gain | source moves |
+|---|---|---|---|
+| (2,6) | 4.626 / 6.540 / **1.41** | 5.479 / 5.319 / **0.97** | theirs +18%, ours −19% |
+| (3,4) | 4.574 / 6.540 / **1.43** | 6.503 / 5.454 / **0.84** | theirs +42%, ours −17% |
+| (4,3) | 4.565 / 6.513 / **1.43** | 6.446 / 5.380 / **0.83** | theirs +41%, ours −17% |
+
+**The whole `L = 2` anomaly is Table 3 versus the analytic reconstruction.** The
+split moves the gain by 0.03; the source moves it from 1.43 to 0.83. §42.2's
+offline test happened to reach the same verdict about the split, but for the
+wrong reason and with an inadmissible tool — this is the admissible answer.
+
+### 44.2 Why: each architecture wants its own parameter design
+
+The two arms move in **opposite directions** when the source changes. Table 3
+makes their arm 41% better and ours 17% worse. Table 3 is not a neutral
+parameter set — it is **tuned for the uncompensated PS**, which is what its
+authors designed it for. The compensated architecture has a different optimum,
+and dropping the compensation into their tuned operating point loses.
+
+At `L >= 4` there is no Table 3 to be tuned against, both arms run on the same
+reconstruction, and the compensation wins by large factors. That is consistent,
+not contradictory — but it means the ablation and the head-to-head are answering
+different questions, and the paper must keep them apart.
+
+### 44.3 The corrected ablation — and the exact zero control
+
+PART 2, analytic at every `L`, split fixed at (4,3), paired over 200 channels
+with identical noise draws:
+
+| `L` | `N_TTD` | their PS | compensated | paired diff | gain | old (published) |
+|---|---|---|---|---|---|---|
+| 1 | 256 | 6.524 | 6.524 | **+0.000 ± 0.000** | **1.00 ± 0.00** | 1.00 |
+| **2** | 128 | 4.565 | 6.513 | +1.949 ± 0.381 | **1.43 ± 0.12** | 0.98 ± 0.08 |
+| 4 | 64 | 2.273 | 6.485 | +4.212 ± 0.408 | 2.85 ± 0.51 | 2.81 ± 0.50 |
+| 8 | 32 | 1.006 | 4.676 | +3.670 ± 0.456 | 4.65 ± 1.18 | 4.70 ± 1.17 |
+| 16 | 16 | 1.089 | 3.180 | +2.091 ± 0.367 | 2.92 ± 0.59 | 2.58 ± 0.53 |
+
+**The zero control is now exact: `+0.000 ± 0.000` at `L = 1`.** With identical
+noise draws and no sharing the two arms are the same beam, so this is a hard
+check, not a statistical one, and it passes.
+
+Only the `L = 2` row moves outside its CI (0.98 -> 1.43); `L` = 4, 8, 16 are
+unchanged within CI. **The rest of the ablation was never affected by any of
+this.**
+
+Also note the compensated arm at `L` = 1, 2, 4: **6.524, 6.513, 6.485** — a 4x
+TTD reduction costs **0.6%**. That is a stronger statement than anything
+currently in the paper and it should be quoted.
+
+### 44.4 Limitation #2, rewritten — and it gets HARDER, not softer
+
+Delete "`L = 2` gives no gain, so the claim is restricted to `L >= 4`". Replace
+with two statements, both of which have to appear:
+
+1. **The ablation claim, valid at every `L`.** At a fixed parameter set the
+   one-term substitution gains 1.00 / **1.43** / 2.85 / 4.65 / 2.92 for
+   `L` = 1 / 2 / 4 / 8 / 16. The `L >= 4` restriction is dropped.
+2. **The head-to-head limitation.** At OJ-COMS's *published* `L = 2` operating
+   point (Table 3, `N_sec = 4`, `K_alpha = 3`, `K = 12`) their arm reads **6.446**
+   and ours **5.380** — **we lose 17%**. The compensated architecture needs its
+   own parameter design and we do not perform one.
+
+Statement 2 is the honest form of a real weakness, and a reviewer will find it if
+we do not write it. It also has a named home in the literature: **Nguyen & Kim,
+IEEE TCOM 72(10) 2024** argue precisely for joint TTD-PS design rather than a
+fixed PS (prior-art finding #3, §25). So the limitation is "we did not co-design
+the parameters", the fix is a known one, and it is future work — not a hole.
+
+### 44.5 A cap on how strongly the `L >= 4` numbers can be stated
+
+At `L = 2` the two parameter sources disagree by **41% on their own arm** (6.446
+vs 4.565). So the analytic reconstruction is **not** a faithful stand-in for their
+design at `L = 2`. At `L >= 4` no Table 3 exists, so **we cannot know whether the
+reconstruction weakens their scheme there too**, and we cannot fix that without
+their code.
+
+Consequence for the wording, and it is not optional:
+
+- **What the ablation measures** is what the PS term does *at a fixed parameter
+  set* — both arms share it, so the ratio is immune to whether the parameters are
+  theirs. That claim stands at every `L`.
+- **What it does not measure** is "our system beats their published system". That
+  is testable only at `L = 2`, and there we lose.
+
+Write the gains as an ablation ratio, never as a head-to-head win, and put §44.4
+statement 2 in the limitations section verbatim.
+
+### 44.6 A third defect in `ablation_ps.m`'s `L = 2` row
+
+`Nsec = min(4, max(1,L))` gives `N_sec = 2` at `L = 2`, but OJ-COMS's published
+`L = 2` configuration is `N_sec = 4, K_alpha = 3` (§22). So the primary figure's
+`L = 2` row was running their arm at a split they never published, on top of the
+source confound. Their arm reads 5.479 at (2,6) and 6.446 at their own (4,3) —
+**the published figure understates their `L = 2` arm by 18%.**
+
+`ablation_ps.m` is otherwise untouched and its `L >= 4` rows are unaffected
+(no Table 3 branch, and the split is (4,3) throughout). **Quote `ablation_split.m`
+PART 2 for the ablation table from now on, not `ablation_ps.m`.**
