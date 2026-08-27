@@ -1,4 +1,4 @@
-function [sec, rho, dbg] = ojcoms_algorithm1(Nt, fc, B, M, d, L, thlim, alim, gamma, Nsec, Kalpha, s_sweep)
+function [sec, rho, dbg] = ojcoms_algorithm1(Nt, fc, B, M, d, L, thlim, alim, gamma, Nsec, Kalpha, s_sweep, force_analytic)
 % OJCOMS_ALGORITHM1  Their sector-shifted / distance-interleaved pilot set.
 %
 % IEEE OJ-COMS v7 2026 (Qaid, Nasir, Al-Ahmadi, Liu), DOI 10.1109/OJCOMS.2026.3695965.
@@ -37,6 +37,14 @@ if nargin == 0
     return;
 end
 if nargin < 12 || isempty(s_sweep), s_sweep = 1; end
+% force_analytic (optional, default false) SUPPRESSES the Table 3 branch below.
+% That branch fires at exactly one place -- L = 2 with Nsec <= 4 at s = 1 -- so any
+% sweep that crosses it silently changes the PARAMETER SOURCE as well as the swept
+% variable. ablation_split.m found this the hard way: its L = 2 split sweep put
+% Nsec = 2,3,4 on Table 3 and Nsec = 6,12 on the analytic branch, and the measured
+% jump sat exactly on that boundary. Pass true to hold the source fixed so the
+% sweep is clean; the Table 3 comparison is then a separate, deliberate run.
+if nargin < 13 || isempty(force_analytic), force_analytic = false; end
 c = 3e8;  fL = fc - B/2;  fH = fc + B/2;  xiH = fH/fc;  G = Nt/L;
 
 % ---- (31) LS coefficients ----
@@ -59,7 +67,7 @@ dbg.Sbound = Sbound; dbg.Wstrong = Wstrong; dbg.Nsec_formula = max(1, ceil(2/abs
 
 % ---- angle parameters ----
 TAB3 = [-31.797 28.40; -33.840 31.93; -33.545 31.61; -32.102 28.51];  % their Table 3
-if L == 2 && Nsec <= 4 && s_sweep == 1
+if L == 2 && Nsec <= 4 && s_sweep == 1 && ~force_analytic
     th_t = TAB3(1:Nsec,1);  th_p = TAB3(1:Nsec,2);
     dbg.source = 'Table 3 (verbatim)';
     % TABLE 3 CONTRADICTS THEIR OWN (69). With alpha'p = 0.158 and
@@ -120,5 +128,5 @@ for s = 1:Nsec
                             'alpha_t',ats(ka),'alpha_p',alpha_p,'sector',s); %#ok<AGROW>
     end
 end
-dbg.Nsec = Nsec; dbg.Kalpha = Kalpha; dbg.Ktotal = numel(sec);
+dbg.Nsec = Nsec; dbg.Kalpha = Kalpha; dbg.Ktotal = numel(sec); dbg.forced = force_analytic;
 end

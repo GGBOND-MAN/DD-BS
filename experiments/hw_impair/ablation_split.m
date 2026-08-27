@@ -37,6 +37,27 @@
 % needlessly wide (it calls itself conservative). Here the per-channel difference
 % d_i = r_comp,i - r_theirs,i is formed first, and its CI is what decides
 % whether the two arms differ. At L = 2 that is exactly the question.
+% The noise draws are re-seeded identically for the two arms, so at L = 1 the
+% paired difference must be EXACTLY zero -- the beams coincide there.
+%
+% ------------------------------------------------------------------------
+% WHAT THE FIRST VERSION OF THIS FILE GOT WRONG, AND WHY IT IS RECORDED HERE.
+% Run 1 gave, at L = 2, gains of 0.98 / 0.83 / 0.83 / 1.42 / 1.80 across the five
+% splits, and the jump sat between Nsec = 4 and Nsec = 6. That is exactly where
+% ojcoms_algorithm1's Table 3 branch stops firing:
+%
+%       Table 3 is returned iff  L == 2 && Nsec <= 4 && s_sweep == 1
+%
+% so Nsec = 2,3,4 used THEIR PUBLISHED PARAMETERS and Nsec = 6,12 used the
+% analytic (61)-(63) reconstruction. The sweep changed the parameter source at
+% the same point it changed the split -- the sec 18 / sec 39 / sec 42.2 pattern a
+% FOURTH time, and this time in a file written specifically to break a confound.
+% PART 2 had the same defect: at the fixed split Nsec = 4, only the L = 2 row
+% came from Table 3 and every other L came from the analytic branch.
+%
+% Fixed by the force_analytic flag now in ojcoms_algorithm1. PART 1 reports BOTH
+% sources so the comparison is explicit; PART 2 forces the analytic branch at
+% every L so the parameter source is constant down the column.
 % ========================================================================
 clear; clc;
 
@@ -57,36 +78,48 @@ end
 fprintf('Split control for the L=2 limitation.  Nt=%d, SNR=%d dB, K=%d, N_iter=%d\n', Nt,SNR_dB,KTOT,N_iter);
 fprintf('serving beam on the SAME Nt/L delays as training.  Paired CI on the difference.\n\n');
 
-fprintf('PART 1 -- L = 2, K = 12 held fixed, only the (N_sec, K_alpha) split changes\n');
-fprintf('%12s | %15s %15s | %17s | %13s\n','split','their PS','compensated','paired diff','gain');
 splits = [2 6; 3 4; 4 3; 6 2; 12 1];
-for i = 1:size(splits,1)
-    Ns = splits(i,1); Ka = splits(i,2);
-    [sec, rho] = ojcoms_algorithm1(Nt,fc,B,M,d,2,thlim,alim,gamma,Ns,Ka);
-    vT = armvec(sec,rho,'ojcoms',2,Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q,SERVE);
-    vC = armvec(sec,rho,'shared',2,Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q,SERVE);
-    report(sprintf('N_sec=%d,Ka=%d',Ns,Ka), vT, vC);
+for src = [true false]        % true = analytic everywhere (clean); false = as published
+    if src
+        fprintf('PART 1a -- L = 2, K = 12 fixed, split swept, ANALYTIC parameters throughout\n');
+        fprintf('           (parameter source held constant -- this is the clean sweep)\n');
+    else
+        fprintf('\nPART 1b -- same splits, Table 3 used wherever it applies (N_sec <= 4)\n');
+        fprintf('           (parameter source CHANGES at N_sec = 6 -- read rows, not the trend)\n');
+    end
+    fprintf('%-22s | %9s %11s | %17s | %13s\n','split','their PS','compensated','paired diff','gain');
+    for i = 1:size(splits,1)
+        Ns = splits(i,1); Ka = splits(i,2);
+        [sec, rho, dbg] = ojcoms_algorithm1(Nt,fc,B,M,d,2,thlim,alim,gamma,Ns,Ka,1,src);
+        vT = armvec(sec,rho,'ojcoms',2,Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q,SERVE);
+        vC = armvec(sec,rho,'shared',2,Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q,SERVE);
+        tag = 'analytic'; if ~isempty(strfind(dbg.source,'Table 3')), tag = 'Table 3'; end %#ok<STREMP>
+        report(sprintf('N_sec=%2d,Ka=%2d %s',Ns,Ka,tag), vT, vC);
+    end
 end
-fprintf(['\nRead PART 1: if every row reads ~1.0 with a paired CI that CONTAINS zero\n' ...
-         'difference, limitation #2 is real and is about L -- keep the L>=4 wording.\n' ...
-         'If the gain climbs with N_sec, the limitation is the split and must be\n' ...
-         'rewritten; the L>=4 restriction would then be unnecessary.\n\n']);
+fprintf(['\nRead PART 1a (the clean sweep): if every row reads ~1.0 with a paired CI\n' ...
+         'that CONTAINS zero, limitation #2 is real and is about L -- keep L>=4.\n' ...
+         'If the gain climbs with N_sec, the limitation is the SPLIT, it must be\n' ...
+         'rewritten, and the L>=4 restriction is unnecessary.\n' ...
+         'PART 1b vs 1a isolates the parameter source at fixed split: any row that\n' ...
+         'moves between them is Table 3 vs the (61)-(63) reconstruction, not L.\n\n']);
 
-fprintf('PART 2 -- full L sweep at a FIXED split (4,3).  Single-variable in L.\n');
+fprintf('PART 2 -- full L sweep at a FIXED split (4,3), ANALYTIC parameters at every L.\n');
+fprintf('(Without force_analytic the L=2 row alone would come from Table 3.)\n');
 fprintf('(N_sec >= L is violated at L = 8, 16 -- identically on both arms, so the\n');
 fprintf(' RATIO is fair; absolute rates there are not the operating point.)\n');
-fprintf('%12s | %15s %15s | %17s | %13s\n','L','their PS','compensated','paired diff','gain');
+fprintf('%-22s | %9s %11s | %17s | %13s\n','L','their PS','compensated','paired diff','gain');
 for L = [1 2 4 8 16]
-    [sec, rho] = ojcoms_algorithm1(Nt,fc,B,M,d,L,thlim,alim,gamma,4,3);
+    [sec, rho] = ojcoms_algorithm1(Nt,fc,B,M,d,L,thlim,alim,gamma,4,3,1,true);  % analytic at every L
     aT = 'ojcoms'; aC = 'shared';
     if L == 1, aT = 'full'; aC = 'full'; end          % zero control: arms coincide
     vT = armvec(sec,rho,aT,L,Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q,SERVE);
     vC = armvec(sec,rho,aC,L,Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q,SERVE);
     report(sprintf('L=%d (%d TTD)',L,Nt/L), vT, vC);
 end
-fprintf(['\nRead PART 2: L=1 must give a paired difference of EXACTLY zero -- with no\n' ...
-         'sharing the fc term is a global constant and both arms are the same beam.\n' ...
-         'Any other value there is a bug, not a result.\n']);
+fprintf(['\nRead PART 2: L=1 must give a paired difference of EXACTLY 0.000 -- with no\n' ...
+         'sharing the fc term is a global constant, both arms are the same beam, and\n' ...
+         'the noise draws are re-seeded identically. Any other value is a bug.\n']);
 
 % ------------------------------------------------------------------------
 function report(label, vT, vC)
@@ -96,11 +129,12 @@ dm = mean(dv); dci = 1.96*std(dv)/sqrt(n);
 g  = mC/max(mT,eps);
 gci = g*sqrt((1.96*std(vC)/sqrt(n)/mC)^2 + (1.96*std(vT)/sqrt(n)/mT)^2);  % unpaired, for comparison
 sig = 'no';  if abs(dm) > dci, sig = 'YES'; end
-fprintf('%12s | %8.3f%8s %8.3f%8s | %+7.3f+-%-6.3f %3s | %5.2f+-%-5.2f\n', ...
-        label, mT, '', mC, '', dm, dci, sig, g, gci);
+fprintf('%-22s | %9.3f %11.3f | %+7.3f+-%-6.3f %3s | %5.2f+-%-5.2f\n', ...
+        label, mT, mC, dm, dci, sig, g, gci);
 end
 
 function v = armvec(sec, rho, arch, L, Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q,SERVE)
+rng(777);                 % identical noise draws for both arms -> a true paired test
 K = numel(sec); c=3e8; kc=2*pi*fc/c; km=2*pi*f/c;
 w = zeros(Nt,K,M); cf = zeros(M,2,K);
 for s = 1:K

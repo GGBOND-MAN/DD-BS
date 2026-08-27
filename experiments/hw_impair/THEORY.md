@@ -2862,3 +2862,96 @@ limitation #1 from "we also collapse" into "we collapse here, and the threshold 
 | `L` threshold | **tested and abandoned** (§42.2) — outside §40's geometry |
 | sector vs `K_alpha` cost ratio ~1.3x | empirical (§41.3), no attempt planned |
 | low-SNR threshold `∝ ln M` | **derivable, not done** (§42.3) — the one item worth starting |
+
+---
+
+## 43. Figures produced; and limitation #2 is WRONG — but the run that showed it is confounded a fourth time
+
+### 43.1 The coverage law reproduces on an independent run
+
+`kmin_theory.m` re-run (reference 6.542 vs 6.546 before — Monte-Carlo drift):
+**`N_sec*s >= C = 2.959` classifies 28/28 again**, and `N_sec*n_tr >= 7.987`
+again gets 25/28, missing the same three cells. `fig9_coverage_law.m` prints the
+counts and circles the misses. The measured bracket is unchanged: highest failing
+cell `N_sec*s = 2.00`, lowest passing `3.00`.
+
+`fig8_pencil.m` renders and its printout confirms the invariant the caption
+rests on: **`alpha` swept by one pilot = 0.0974 at both `s = 1` and `s = 1/8`**,
+against `H = 0.0975`. Pivot moves from `theta = -31.2` (4 branches) to `-3.0`
+(1 branch), exactly as §40.3 predicts.
+
+### 43.2 `L = 2` DOES gain — limitation #2 as written is false
+
+`ablation_split.m` PART 1, `L = 2`, `K = 12` held fixed, five splits, paired
+statistics over 200 channels:
+
+| split | their PS | compensated | paired diff | gain |
+|---|---|---|---|---|
+| (2, 6) | 5.440 | 5.351 | −0.088 ± 0.299 (ns) | 0.98 ± 0.09 |
+| (3, 4) | 6.511 | 5.388 | −1.123 ± 0.340 | 0.83 ± 0.05 |
+| (4, 3) | 6.429 | 5.356 | −1.074 ± 0.334 | 0.83 ± 0.05 |
+| (6, 2) | 4.614 | 6.561 | +1.946 ± 0.407 | 1.42 ± 0.13 |
+| **(12, 1)** | 3.637 | **6.538** | **+2.901 ± 0.434** | **1.80 ± 0.21** |
+
+**There exist `L = 2` configurations where the compensation gains 1.80x, with a
+paired CI nowhere near zero.** The paper's limitation #2 — "`L = 2` gives no gain,
+so the claim is restricted to `L >= 4`" — is a statement about **one
+configuration**, not about `L = 2`. It must be rewritten, and **the `L >= 4`
+restriction is not needed**.
+
+That conclusion is safe because it needs only the existence of the (12,1) row.
+The *ordering* across the five rows is not safe — see next.
+
+### 43.3 The fourth occurrence of the same confound, in a file written to break one
+
+The jump sits between `N_sec = 4` and `N_sec = 6`. That is exactly where
+`ojcoms_algorithm1`'s Table 3 branch stops firing:
+
+    Table 3 is returned iff   L == 2  &&  Nsec <= 4  &&  s_sweep == 1
+
+so `(2,6) (3,4) (4,3)` used **their published parameters** and `(6,2) (12,1)` used
+the **analytic (61)-(63) reconstruction**. Split and parameter source change at
+the same row, and are therefore perfectly confounded across the sweep. **The run
+cannot say whether the split or the source is responsible.**
+
+PART 2 had the same defect: at the fixed split `N_sec = 4`, only the `L = 2` row
+came from Table 3 and every other `L` came from the analytic branch — so the
+"single-variable in `L`" sweep changed the parameter source at `L = 2` too. Its
+`L = 2` reading of 0.83 is a Table-3 number sitting in an otherwise analytic
+column.
+
+**This is the same mistake as §18, §39 and §42.2 — the fourth time — and this
+file was written specifically to break a confound of exactly this kind.** Writing
+the rule down (§18) has now failed to prevent it four times. The operational
+lesson is that the rule is not enough: **every sweep needs its parameter
+provenance printed per row**, so a source change is visible in the output rather
+than inferred afterwards. `ablation_split.m` now prints a `Table 3` / `analytic`
+tag on every row.
+
+### 43.4 Fixes applied
+
+- **`ojcoms_algorithm1.m`** gains an optional 13th argument `force_analytic`
+  (default `false`, so nothing else changes). It suppresses the Table 3 branch so
+  a sweep can hold the parameter source constant.
+- **PART 1** now runs the five splits **twice** — 1a with the analytic branch
+  everywhere (the clean split sweep), 1b as published — so the split effect and
+  the source effect are separated by construction, and each row is tagged.
+- **PART 2** forces the analytic branch at every `L`.
+- **The paired test is now exact.** `armvec` re-seeds `rng(777)` before each arm,
+  so both arms see identical noise draws. The first run's `L = 1` control read
+  `+0.001 ± 0.006` — consistent with zero, but only because the noise differed
+  between arms. It must now read **exactly 0.000**, which is a real check rather
+  than a statistical one.
+
+### 43.5 What has to be re-run, and what the paper says meanwhile
+
+Re-run `ablation_split.m`. Until then:
+
+- **Safe to write now**: `L = 2` compensation reaches **1.80 ± 0.21** at
+  `(N_sec, K_alpha) = (12, 1)`; limitation #2 must be rewritten and `L >= 4`
+  dropped.
+- **Not safe to write**: any claim about *why* — whether the `L = 2` behaviour
+  tracks `N_sec` or the Table-3/analytic parameter source. PART 1a vs 1b will say.
+- **`ablation_ps.m`'s published `L = 2` row (0.98 ± 0.08) is a Table-3,
+  `(2,6)` number.** Keep it, label it as that specific configuration, and stop
+  quoting it as "the `L = 2` result".
