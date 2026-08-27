@@ -79,6 +79,7 @@ fprintf('Split control for the L=2 limitation.  Nt=%d, SNR=%d dB, K=%d, N_iter=%
 fprintf('serving beam on the SAME Nt/L delays as training.  Paired CI on the difference.\n\n');
 
 splits = [2 6; 3 4; 4 3; 6 2; 12 1];
+P1 = zeros(0,12);   % [analytic? Nsec Ka mT cT mC cC dm dci g gci table3?]
 for src = [true false]        % true = analytic everywhere (clean); false = as published
     if src
         fprintf('PART 1a -- L = 2, K = 12 fixed, split swept, ANALYTIC parameters throughout\n');
@@ -93,8 +94,10 @@ for src = [true false]        % true = analytic everywhere (clean); false = as p
         [sec, rho, dbg] = ojcoms_algorithm1(Nt,fc,B,M,d,2,thlim,alim,gamma,Ns,Ka,1,src);
         vT = armvec(sec,rho,'ojcoms',2,Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q,SERVE);
         vC = armvec(sec,rho,'shared',2,Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q,SERVE);
-        tag = 'analytic'; if ~isempty(strfind(dbg.source,'Table 3')), tag = 'Table 3'; end %#ok<STREMP>
-        report(sprintf('N_sec=%2d,Ka=%2d %s',Ns,Ka,tag), vT, vC);
+        tag = 'analytic'; isT3 = ~isempty(strfind(dbg.source,'Table 3')); %#ok<STREMP>
+        if isT3, tag = 'Table 3'; end
+        st = report(sprintf('N_sec=%2d,Ka=%2d %s',Ns,Ka,tag), vT, vC);
+        P1(end+1,:) = [double(src) Ns Ka st double(isT3)]; %#ok<SAGROW>
     end
 end
 fprintf(['\nRead PART 1a (the clean sweep): if every row reads ~1.0 with a paired CI\n' ...
@@ -109,20 +112,24 @@ fprintf('(Without force_analytic the L=2 row alone would come from Table 3.)\n')
 fprintf('(N_sec >= L is violated at L = 8, 16 -- identically on both arms, so the\n');
 fprintf(' RATIO is fair; absolute rates there are not the operating point.)\n');
 fprintf('%-22s | %9s %11s | %17s | %13s\n','L','their PS','compensated','paired diff','gain');
+P2 = zeros(0,10);   % [L N_TTD mT cT mC cC dm dci g gci]
 for L = [1 2 4 8 16]
     [sec, rho] = ojcoms_algorithm1(Nt,fc,B,M,d,L,thlim,alim,gamma,4,3,1,true);  % analytic at every L
     aT = 'ojcoms'; aC = 'shared';
     if L == 1, aT = 'full'; aC = 'full'; end          % zero control: arms coincide
     vT = armvec(sec,rho,aT,L,Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q,SERVE);
     vC = armvec(sec,rho,aC,L,Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q,SERVE);
-    report(sprintf('L=%d (%d TTD)',L,Nt/L), vT, vC);
+    st = report(sprintf('L=%d (%d TTD)',L,Nt/L), vT, vC);
+    P2(end+1,:) = [L Nt/L st]; %#ok<SAGROW>
 end
+save('ablation_split_results.mat','P1','P2','Nt','B','fc','M','KTOT','N_iter','SNR_dB');
+fprintf('\nsaved ablation_split_results.mat -- fig2_ablation.m plots it\n');
 fprintf(['\nRead PART 2: L=1 must give a paired difference of EXACTLY 0.000 -- with no\n' ...
          'sharing the fc term is a global constant, both arms are the same beam, and\n' ...
          'the noise draws are re-seeded identically. Any other value is a bug.\n']);
 
 % ------------------------------------------------------------------------
-function report(label, vT, vC)
+function st = report(label, vT, vC)
 dv = vC - vT;  n = numel(dv);
 mT = mean(vT); mC = mean(vC);
 dm = mean(dv); dci = 1.96*std(dv)/sqrt(n);
@@ -131,6 +138,8 @@ gci = g*sqrt((1.96*std(vC)/sqrt(n)/mC)^2 + (1.96*std(vT)/sqrt(n)/mT)^2);  % unpa
 sig = 'no';  if abs(dm) > dci, sig = 'YES'; end
 fprintf('%-22s | %9.3f %11.3f | %+7.3f+-%-6.3f %3s | %5.2f+-%-5.2f\n', ...
         label, mT, mC, dm, dci, sig, g, gci);
+cT = 1.96*std(vT)/sqrt(n); cC = 1.96*std(vC)/sqrt(n);
+st = [mT cT mC cC dm dci g gci];
 end
 
 function v = armvec(sec, rho, arch, L, Nt,B,fc,M,d,f,CH,SNR_t,SNR_dB,Q,SERVE)

@@ -3072,3 +3072,52 @@ source confound. Their arm reads 5.479 at (2,6) and 6.446 at their own (4,3) —
 `ablation_ps.m` is otherwise untouched and its `L >= 4` rows are unaffected
 (no Table 3 branch, and the split is (4,3) throughout). **Quote `ablation_split.m`
 PART 2 for the ablation table from now on, not `ablation_ps.m`.**
+
+---
+
+## 45. The Fig-8 reproduction claim, corrected — and what it costs the `alpha'p` argument
+
+`fig2_ablation.m` puts our reproduction of their arm beside their Fig. 8. With
+the split held at their published (4,3) and the analytic branch forced:
+
+| `L` | our "their PS" | their Fig. 8 | error |
+|---|---|---|---|
+| 1 | 6.524 | ~6.5 | +0.02 |
+| 2 | 4.565 | ~5.0 | **−0.44** |
+| 4 | 2.273 | ~2.2 | +0.07 |
+| 8 | 1.006 | ~0.6 | **+0.41** |
+| 16 | 1.089 | ~0.4 | **+0.69** |
+
+The old `ablation_ps.m` run (split (2,6), Table 3 at `L = 2`) read
+6.524 / 5.481 / 2.313 / 0.982 / 1.212, i.e. errors +0.02 / **+0.48** / +0.11 /
+**+0.38** / **+0.81**. **Both versions are 0.4-0.8 high at `L` = 8 and 16**, and
+both are ~0.45 off at `L = 2`, in opposite directions.
+
+**So "the reproduction tracks their Fig. 8 at all five points" was never true and
+must not be repeated.** The honest statement is: within 0.1 at `L` = 1 and 4,
+about 0.45 off at `L = 2`, and 0.4-0.7 high at `L` = 8 and 16 — a reconstruction
+that gets the shape and the collapse right and the tail wrong.
+
+### 45.1 What this costs §35's `alpha'p` argument
+
+§35 closed the Table-3 `alpha'p` question (0.5809 from their (69), not the
+tabulated 0.158) on three arguments:
+
+- **(a)** 0.5809 sweeps exactly the target interval `[0.0025, 0.1]` by
+  construction, while 0.158 sweeps `[−0.387, −0.361]`, entirely outside the
+  search region — **untouched, and it is the decisive one**;
+- **(b)** 0.5809 equals the DD-BS baseline's own `alpha_p = 1859/3200` —
+  **untouched**;
+- **(c)** 0.5809 "reproduces their Fig. 8 at all five sub-array sizes" —
+  **weakened**: it was measured on the (2,6) split, and at their own (4,3) split
+  the `L = 2` point moves the wrong way, while `L` = 8 and 16 were never within
+  reading error in either version.
+
+Argument (c) should be **downgraded to "reproduces the shape and the collapse
+point"**, or dropped. (a) alone settles the question — a parameter set that
+points every pilot outside the search region cannot be the one that produced
+their results — so the conclusion stands and only the supporting sentence changes.
+
+**Action for the paper:** limitation #4 currently cites "0.5809 reproduces their
+Fig. 8 at all five points" as the key evidence. Replace that with argument (a),
+and state the reproduction error table above in the appendix.
